@@ -7,6 +7,15 @@ Single-player against AI opponents (greedy, warrior, core-rush, munchkin,
 or refine policies); 2 to 6 seats with one human and any mix of AI seats.
 Faithful to the base-game rules; no expansions.
 
+## Download
+
+A pre-built self-contained Windows x64 binary is attached to the latest
+release — no .NET install required, just download and run:
+
+**→ [Latest release](https://github.com/johnchampaign/impulse-csharp/releases/latest)**
+
+To build from source instead, see [Build & run](#build--run) below.
+
 ## Disclaimer
 
 This is a non-commercial fan implementation, released for personal and
