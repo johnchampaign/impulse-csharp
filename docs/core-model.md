@@ -25,7 +25,7 @@ title — multiple physical cards share an effect. The registry keys by
 | Field | Type | Notes |
 |---|---|---|
 | `Id` | `int` | 1..109 with one gap (Vassal numbering preserved). |
-| `ActionType` | `CardActionType` | `Command \| Build \| Plan \| Research \| Mine \| Refine \| Trade \| Sabotage \| Explore \| Battle` (rulebook actions, p.6–17). |
+| `ActionType` | `CardActionType` | `Command \| Build \| Plan \| Research \| Mine \| Refine \| Trade \| Sabotage \| Draw \| Execute` (deck-card action headers, confirmed against Vassal `c*.jpg`). `Explore` and `Battle` are *mechanics*, not card actions. |
 | `Color` | `CardColor` | `Blue \| Yellow \| Red \| Green`. Mineral matching is equality (locked). |
 | `Size` | `int` | 1..3, the white-box number used for matching, mining, refining, etc. |
 | `BoostNumber` | `int` | Non-null. Same number as `Size` on the Vassal cards but stored as a separate field so future card sets can diverge. |

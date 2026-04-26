@@ -1,0 +1,932 @@
+            by Carl Chudyk
+
+
+
+
+GUIDE TO THE SECTOR
+                             1
+COMPONENTS:              WELCOME TO IMPULSE
+- 108 Action Cards
+- 1 Sector Core Card
+- 1 Colorblind Aid
+- 2 General References
+- 78 Ships (13 per
+color)
+- 6 Command Centers
+- 1 Space Prestige       OBJECTIVE: In Impulse, each player commands a fleet
+Board                    of Transports and Cruisers, exploring an untouched
+- 1 Impulse marker       sector of the galaxy. Through mining, research, and
+- 1 Invisible Space      combat, plus taking advantage of the features native to
+Fiend                    the sector, you seek to earn enough Space Prestige to
+                         convince the native populations to join your interstellar
+                         federation. Twenty prestige, to be exact. Aliens of this
+                         region roughly translate prestige as “points.”
+2
+                 EXECUTE                                   SABOTAGE
+
+
+
+
+       Execute one size 22 card from your hand    Sabotage a Transport ﬂeet with 32 bombs.
+           OR Execute one of your techs.
+
+
+
+
+CARDS:
+There are 108 Action Cards in Impulse. Each has an action type at its top and
+an effect at the bottom. Every card has a color (Red, Blue, Green, or Yellow) and
+a size (1, 2, 3), determined by the number of icons on the left. Each card has six
+gates along its edges, which connect to other cards in the Sector Map.
+
+          The Sector Core card is not shuffled into the deck with the other
+          cards. It forms the center of the Sector Map. The Colorblind Aid
+        and two General References should also be removed before play.
+                                                                                             3
+CHOOSING A
+RACE:                                         SETUP
+The six available races   Each player chooses a race and takes its Command
+in Impulse each have      Center card and all the ship tokens of one color.
+a unique starting
+Tech, the one on the
+                          Place 1 of your ships on the Space Prestige board’s 0.
+bottom right of their
+                          Shuffle and deal out cards face-down to form the Sector
+Command Center.
+                          Map as shown on the next page, with the Sector Core
+These provide you         card at its center.
+with a bit of direction
+to start the game,        Draw 5 cards plus the card on your Home location, and
+but will eventually       choose one of the six to place face-up there. Then place
+be covered up by the      3 ships on your Home: 2 ships on the card standing up
+Research action.          (Transports), and1 ship on its side on the gate facing the
+                          Sector Core (a Cruiser).
+4
+                                                                          COMMAND
+
+
+     456                                                                                                      3456
+                                                                   Command a 11 ship fleet for two moves.
+
+
+
+
+                     DRAW                       SECTOR CORE
+
+
+
+
+             Draw one card from the deck.         Score 1 point.
+         Then draw 11r/y
+                      G Y card from the deck.
+
+
+
+
+ 2356                                                                                                           26
+
+                                                                             RESEARCH
+
+
+      456                                                                                                     3456
+                                                                   Research two size 1 cards from the deck.
+
+
+
+
+SETUP EXAMPLE
+A 3-player setup is shown above, after initial ship placement.
+The colored numbers 2, 3, 4, 5, and 6 show where Home locations
+are for a game with that number of players.
+                                                                                                                     5
+CARD SIZE:
+The “Size” of a card is
+                                        CARDS/MAP
+determined by the
+                            ACTION TYPE: Shows what kind of action this card
+number of icons on
+                            contains. There are 10 different action types, each of
+its left side. Size 2 and
+size 3 cards have more      which are explained on pages 28 to 38.
+powerful action texts.
+                            SIZE ICONS: Shows a card’s size. A card can be size
+Since cards on the          1, 2, or 3. Action cards with larger sizes have more
+Sector Map and the          powerful abilities.
+Impulse get activated
+by your opponents,          EFFECT: The specific action for this card. Many
+you should be careful       different effects exist within each type of action.
+what you share!             Every effect contains a number in a box. This value
+                            can be boosted when the card is used (page 22).
+
+
+6
+            EXECUTE                                                COMMA
+
+
+
+
+  Execute one size 22 card from your hand                    Command 1 transpor
+      OR Execute one of your techs.
+
+
+
+
+GATES: Adjacent cards form gates on the Sector Map. A
+pair of connectors like these is considered one gate. A fleet of
+Cruisers on a gate patrols both adjacent cards.
+                                                                       7
+TEAM RULES +
+SETUP:
+In 4- or 6-player
+games, you can play
+in teams of 2 or 3
+players.
+                                             VS
+                         You cannot fight battles against your teammates. You
+Your Home locations      can move through friendly Cruisers and cards they
+and seating should be
+                         patrol, but never end an action with your Cruisers and
+chosen so that you are
+opposite from your
+                         an ally’s on the same gate.
+teammates in both
+turn order and board     Your points are all tracked individually. Your team
+position.                wins together if any player on the team reaches 20
+                         points. Each team has its own Impulse, populated
+                         only by the cards its members play.
+8
+   You are permitted to discuss openly what’s in your hand and what you
+   will play as long as all players can hear you. All other rules remain the
+same in a team game. Some of the team rules refer to concepts explained
+later in the rulebook.
+
+
+
+
+                                                                          9
+SHARING:
+Remember that even
+                                    THE IMPULSE
+though the cards you
+                         The Impulse determines what actions you are able to
+place on the Impulse
+                         perform on your turn. It is a line of cards common to all
+might be used by
+other players, you       players that is placed next to the Space Prestige Board
+can probably use         and the deck. On your turn, you will add a card to the
+them best!               Impulse and then perform all of the actions in order. At
+                         the end of your turn, the oldest card will be removed
+Sometimes it is okay     from the Impulse.
+to put a strong card
+out, especially if it    Essentially, the Impulse is a conveyor belt of actions that
+needs a color that you   everyone shares. New cards are always added to the
+have in your hand.
+                         bottom, and trimmed cards are removed from the top.
+Your opponents
+might not have any!      Use the Impulse marker to show which card is currently
+                         being used.
+10
+                                                                  RESEARCH
+
+
+
+
+                                                         Research two size 1 cards from the deck.
+
+
+
+
+                                                                  SABOTAGE
+
+
+
+
+     trimmed next.
+                                                         Sabotage a transport fleet with 2 bombs.
+
+
+
+
+                                                                       MINE
+
+
+
+
+                                                             Mine 11 YR card from your hand.
+                                                                                                    Use cards in order from top to bottom -->
+
+
+
+
+                                                                      TRADE
+     Research, the oldest card on the Impulse, will be
+
+
+
+
+                                                             Trade 11 YB card from your hand.
+11
+ACTIONS ARE
+OPTIONAL:                          TURN STRUCTURE
+You can always ignore       Each turn consists of several steps, done in order:
+part or all of any action
+card you use.
+                            1. Add a card to the Impulse from your hand.
+If you want to use an       2. Use one of your two Techs.
+action but can only do
+                            3. Use each Impulse card, in order from left to right.
+part of it, do as much
+as you can.                 4. Use your Plan. You may choose to delay if it has
+                            fewer than 4 cards. Discard your entire Plan if used.
+Adding a card to the
+Impulse is not optional.    5. Score 1 point for each of your fleets that patrols
+If your hand is empty       the Sector Core.
+to start your turn, skip    6. Draw 2 cards, and trim the Impulse to 3 cards.
+that step.
+                            Shuffle the discards into the deck if it is empty.
+12
+                          When scoring points for the
+SECTOR CORE               Sector Core, the size of each
+                          fleet is irrelevant, score points
+                          only for the number of gates
+                          you have Cruisers on.
+
+                          At the end of your turn, play
+  Score 1 point.
+                          passes clockwise to the next
+                          player.
+
+
+
+
+ In this example, BLUE would score 1 point.
+
+                                                              13
+AGGRESSION IS
+YOUR FRIEND:                               SCORING
+Combat is a great way       There are several ways to score points in Impulse.
+to score points, and a
+good way to catch up
+                            1. COMBAT
+when behind.
+                            Each ship you destroy gains you 1 point, whether
+The attacker gets an        destroyed in battle or with a Sabotage action.
+advantage when              Winning a battle is worth 1 additional point.
+fighting (seeing number
+of reinforcements first),   2. SECTOR CORE
+so use it!
+                            Each turn, you will gain 1 point for every Cruiser
+                            fleet you have that patrols the Sector Core. You can
+                            also activate the Sector Core with your Transports,
+                            and you can choose which color of mineral to use to
+                            boost it each time you activate it.
+14
+3. ACTIONS
+The Trade and Refine actions both allow you to sell your cards for points.
+Trade uses cards in your hand, and Refine uses mineral cards that you’ve
+gathered with the Mine action.
+                                                                             A mixture of poin
+     SPACE PRESTIGE BOARD                                                    sources is key to victory,
+     +1 per icon on a Traded card, +1 or more for Refining a card.
+     +1 per battle won, +1 per ship destroyed (Battle, Sabotage, or Move).
+     +1 per Sector Core gate controlled at end of turn.                      but occasionally a sharp
+     +1 or more for activating Sector Core with transports.
+                                                                             focus on one can prove
+                           9                   10                            successful.
+                                                                     20
+     0                     8                   11
+                                                                             Points are tracked on the
+                           7                   12                     19
+                                                                             Space Prestige Board.
+     1                     6                   13                     18
+     2                     5                   14                     17
+     3                     4                   15                     16
+
+                                                                                                          15
+COUP DE
+GRACE:                                    GAME END
+By going all out on a       The game ends immediately when any player scores
+turn, you can score a       20 points, even if it is not that player’s turn. There is
+lot of points to close
+                            no way for players to simultaneously score points, so
+out a game, especially
+if you’re willing to risk
+                            a tiebreaker is unnecessary. If there is still a tie, you
+combat.                     cheated!
+
+Coasting to 20 is a safe    In a team game, remember that only one player on
+strategy, but be wary       the team needs to reach 20 points for the entire
+of someone jumping          team to be victorious.
+past you to claim the
+prize!
+                            EMPTY DECK
+                            Any time the deck is empty, the discard pile should
+                            be shuffled to create a new one.
+16
+ELIMINATION
+If a player has no ships on the board, they are eliminated from play. If all
+players but one are eliminated, the game ends. An eliminated player’s
+Command Center cards and hands are all discarded.
+
+HAND LIMIT
+You can never have more than 10 cards in your hand. Any time you would
+draw a card into your hand and you already have 10, do nothing instead.
+For example, if you have nine cards at the end of your turn when it is time
+to draw two, then draw one card and stop. The only time the hand limit
+is ignored is when exploring a new card on the Sector Map with 10 cards
+already in your hand. At the end of the explore, you will be back down to
+10.
+
+
+
+
+                                                                               17
+COMMAND
+CENTER TIP:                          COMMAND CENTER
+It might be tempting to     Your Command Center is both your reference card and
+spend all your efforts      where all your accumulated action cards of various types will
+building up a massive       live during the game. Cards on your Command Center are
+pile of minerals and a
+                            not part of your hand, and therefore do not count against
+large plan, don’t forget
+that your opponents         your hand limit. There is no limit to the number of cards that
+only need 20 points to      can be Minerals or in your Plan. Techs are limited to the two
+win!                        slots available.
+
+You’ll look silly if your   If possible, your Command Center should be near your
+war is lost before you      Home location, for ease of play. The only difference
+fire a single shot.
+                            between the different Command Centers is their race
+                            names and their unique Tech.
+
+18
+                                                                        TRIANGULUMNISTS
+         RESEARCH
+               RESEARCH
+                      EXECUTE                                                                                                                                                      DRAW
+
+
+
+                                      MINERALS
+                                                                                      TURN PHASES
+                                                            1. Add a card to the Impulse.          4. Use or delay your Plan.
+
+
+
+
+                                                 +1 PER
+                                                            2. Use one of your techs.              5. Score Sector Core points.
+
+
+
+
+                                                                                                                                                               PLAN
+                                                                                                                                          CANNOT DELAY IF 4+
+                                                            3. Use Impulse cards, in order.        6. Draw two, trim Impulse.                                                       MINE
+                                                                                      BATTLE RULES
+                                                       1. Defender places reinforcements face down, then attacker.
+                           Research 11 RY card
+                               theExecute
+                                                   1 card
+                                          one size 2   2. Reveal them.
+                                                           from the deckTo count, each must match (size+color) a card                                                     Draw one card from the deck.
+Research two size 1 cards from     deck.
+                            from yourORhand.
+                                          Execute one of your techs.
+                                                       in your Plan, Impulse, or Techs. Return bluffs to your hand.                                                             EXECUTE
+                                                                                                                                                                      Then draw 11r/y
+                                                                                                                                                                                   G Y card from the deck.
+
+                                                       3. Draw one card per cruiser in fight, add to reinforcements.
+                                                       4. Most total icons wins, all losing ships destroyed. Score 1 Prestige
+                                                       for winning a battle, +1 per ship destroyed.                                                                   Mine two size 1 cards from your hand.
+
+
+
+
+                                                          RESEARCH
+                                                          BASIC TECH                                                BASIC TECH
+                                                                                                                                                                      Execute one size 21 card from your hand
+                                                                                                                                                                          OR Execute one of your techs.
+
+
+                                          Discard a card in order to either:
+                                                                                                             Build a cruiser at home on an edge
+                                          Command one fleet for one move
+                                                                                                             that touches an unexplored card.
+                                          OR Build one ship at home.
+
+
+                                       Research two size 1 cards from the deck.
+
+
+
+
+                                                                                                                                                                                                                19
+REPLACING                 TECHS
+TECHS:                    Your Command Center has two slots for Techs. The
+                          Research action will allow you to upgrade them.
+Having a good Tech        Before executing the Impulse on your turn, you may
+to use every turn (or     use one of your two Techs. You begin with 2 Basic
+a good pair to choose     Techs, one that is common to all races and one that
+from) is important.
+                          is specific to yours.
+Your starting Techs are
+great at the beginning    MINERALS
+of the game, but don’t    The Mine action will allow you to turn cards into
+hesitate to replace       mineral cards, tucked under the left side of your
+them with better          Command Center. Each icon on a mineral card
+options when you          becomes a gem, which will help boost actions of
+have the chance.          that color. Gems can be turned into many points
+                          via the Refine action.
+
+20
+PLAN
+The right side of your Command Center is your Plan, which is populated
+by the Plan action. Your Plan is like your own personal Impulse, which
+can be stored up and used on a turn when you’re ready. After using
+cards from the Impulse on your turn, you may use your Plan. If you do,
+perform each card in it in order, and then discard the entire Plan. As
+with Impulse cards, you can skip individual actions, but they are still
+discarded at the end. If your Plan has four or more cards in it, you must
+use it at the end of your turn. The contents of your Plan are public.
+
+
+
+
+                                                                            21
+BOOSTING:
+Boosting your actions
+                                        ACTIONS
+is one of the most
+                         Each turn you will perform the action cards on the
+important mechanics
+to master in Impulse.
+                         Impulse, and possibly additional actions from your
+                         Command Center, your hand, or the Sector Map.
+Moving Transports in     There are 10 different action types, all explained on
+groups of two early in   the following pages. Each action card’s text contains
+the game will allow      a boxed number that can be boosted.
+you to do stronger
+things, and gaining      Actions are always optional, and a number on an
+some minerals is a
+                         action card is always “up to”. A card allowing you to
+priority!
+                         “Mine two size [3] cards” could also be used to mine
+                         size 1 or 2 cards.
+
+
+22
+BOOSTING
+You can power up any action by boosting the boxed number on a card in
+one of two ways. First, if you have Mineral cards in your Command Center
+matching the color of the action card, the number is boosted by 1 for every
+2 gems you have of that color. These are not spent; you keep them.
+
+Second, if the action is a card on the Sector Map, you can activate it with a
+Command action by moving Transports onto it. At the end of the action,
+you count each Transport you just moved onto the card (previously present
+Transports are ignored!) as 1 matching gem.
+
+So if you moved onto a red card with 3 of your Transports, and you also
+have 1 red gem in your Minerals, you would boost its boxed number by 2.
+
+
+
+
+                                                                                23
+CHANCE:                   FROM THE DECK
+                          Many cards instruct you to do something “from the
+When drawing from         deck”. For example: “Mine two size [2] cards from
+the deck, you might       the deck.” This means you have two chances to
+want to know what the
+                          draw a card of the appropriate type from the deck.
+chances are of drawing
+a certain type of card.
+                          Reveal cards from the deck one at a time, checking
+                          each to see if it satisfies the condition. If it does,
+Half the deck is size     perform the action on it. Otherwise, discard it. Such
+1 cards, about a third    cards are revealed to everyone as they are drawn.
+is size 2, and about a
+sixth is size 3.          Remember that size requirements are always inclusive
+                          of lower values. In this example, if you revealed a size
+There are 27 cards of
+                          3 Execute and a size 1 Command, you would place the
+each color in the deck.
+                          Command card in your Minerals and discard the Execute.
+
+
+24
+                        These symbols on certain action cards indicate
+                       a card of the appropriate color. As with the size
+  R G B Y              requirement, if a non-matching card is drawn, it
+                       would be discarded.
+
+
+FROM YOUR HAND
+Other action cards will use cards in your         COLOR REFERENCE
+hand. Remember that all actions are
+optional, and you are never required to            Blue       Red
+spend cards from your hand in this way.
+Cards on your Command Center do not                Yellow     Green
+count as part of your hand.
+
+
+
+                                                                           25
+DEFINITIONS:
+Ship - Any ship token
+                                             SHIPS
+on the Sector Map.
+                          The Command action will allow you to move your
+Cruiser - Any ship on a
+                          ships on the Sector Map. You have a total of 12 ship
+gate.                     tokens that you can have in play, mixed between
+                          Transports and Cruisers depending on where they
+Transport - Any ship on   are located. Ships never switch type while in play.
+the center of a card.
+                          Examples for a single move are shown on the right.
+Fleet - A group of one    Transports move from one card through a gate to an
+or more Transports
+                          adjacent card. Cruisers move from one gate, through
+on the same card, or
+Cruisers on the same      a card to another gate on that card. Cruisers cannot
+gate.                     be on a lone connector that touches the edge of the
+                          Sector Map.
+
+26
+                                                                                                                           EXECUTE
+
+
+
+
+  Example of
+                                                                                                                                  1 card from the deck
+                                                                                                                 Execute one size 2
+                                                                                                                     OR Execute one of your techs.
+
+
+
+
+Transport move                                                                           RESEARCH
+ (card to card)
+                                                                                Research two size 1 cards from the deck.
+
+
+
+
+                                                  EXECUTE
+
+
+
+
+                                                                                                                      Example of
+                                                         1 card from the deck
+                                        Execute one size 2
+                                            OR Execute one of your techs.
+
+
+
+
+                                                                                                                     Cruiser move
+                RESEARCH
+                                                                                                                     (gate to gate)
+       Research two size 1 cards from the deck.
+
+
+
+
+                                                                                                                                                         27
+SECTOR CORE:
+Transports can activate
+                                   ACTION TYPES
+the Sector Core to
+                          COMMAND
+score points. You can
+choose what color it
+                          Command actions allow you to move your ships on
+counts as each time       the Sector Map.
+you move there, and
+match mineral cards       Moving Transports allows you to use actions from
+accordingly.              cards on the Sector Map. After the Command action,
+                          use the card they ended their movement on before
+Remember that if any      continuing with the next action on the Impulse. You
+opponent patrols the
+                          cannot activate the card they started their movement
+Sector Core, you can’t
+move Transports there.    on. Transports that just moved each count as a bonus
+                          mineral for the purpose of boosting that action card.
+
+
+28
+Moving Cruisers allows you to attack enemy ships and to patrol cards.
+A Cruiser fleet that moves through a card containing enemy Transports
+destroys them all, scoring 1 point apiece. However, if that movement re-
+sults in a battle with enemy Cruisers, the Transports are only destroyed
+if you win the battle. A Cruiser fleet that moves onto a gate containing
+enemy Cruisers starts a battle. (See page 34)
+
+You occupy any card where you have a Transport.
+
+You patrol a card if you have a Cruiser on any gate touching it. Enemy
+Transports may not move onto a card you patrol. Enemy Cruisers cannot
+move through cards you patrol except to start a battle. If multiple players
+patrol the same card, the player moving ships can choose who to fight.
+
+
+
+
+                                                                              29
+SPACE URBAN                EXPLORING
+PLANNING:                  If you move your ships onto or through a face-
+                           down card, you explore it. To explore a card, take it
+You have control over      into your hand, then place a card from your hand
+how the Sector Map         (possibly the one you picked up) face-up where it
+develops around you,       was. You can temporarily exceed the hand limit
+as long as you get
+                           while exploring. If you explore multiple cards during
+there first!
+                           one movement, explore them one at a time. Note
+You have to weigh the      that you must declare your entire movement before
+benefits of moving         exploring any cards.
+out quickly before you
+have many options          When moving a Transport fleet to explore, the card
+in your hand versus        they end their movement on will be activated
+the ability to choose
+                           immediately.
+carefully if you wait to
+draw cards.
+
+30
+During any movement, your ships stick together. When you move a 3
+Cruiser fleet, you cannot send two in one direction and the last in another.
+When starting a movement, however, you are not obligated to take the
+entire fleet at a location. For example, if you have 4 Cruisers on a gate and
+you use an action allowing you to move 1 fleet, you could take just three
+and leave the last to defend the gate.
+
+Several Command cards contain text like “Command two fleets for [2] moves
+apiece. Each must move to the same card.” If moving Transports, all move
+together and activate the card once. If moving Cruisers, each fleet could move
+to a different gate attached to that card, possibly starting multiple battles. You
+could also move one Transport fleet and one Cruiser fleet. You cannot move
+the same fleet twice with these cards.
+
+
+
+
+                                                                                     31
+DEFENDING                          ILLEGAL MOVES
+TERRITORY:
+                                                                EXECUTE                                                             TRADE
+Powerful cards can
+wind up on the Sector
+Map, and you don’t                                                      1 card from the deck
+                                                       Execute one size 2
+                                                           OR Execute one of your techs.
+                                                                                                                        Trade 1 size three card from your hand.
+
+
+want your opponents
+to use them!
+                                 RESEARCH                                                          REFINE
+
+Blockading them with
+a patrolling Cruiser             Research 11 RY card                                   Refine one 1G mineral card for 11 point
+
+fleet is a great way              from your hand.                                                    per gem.
+
+
+
+
+to shut down an
+opponent’s engine.
+                         Both of these moves are illegal. Since Yellow patrols
+Destroying their ships   the Trade card, Red cannot move a Transport there.
+also works.              Similarly, the Cruiser cannot move through the Refine
+                         card except to start a battle.
+32
+                        LEGAL MOVES
+                                                EXECUTE                                                             TRADE
+
+
+
+
+                                                        1 card from the deck
+                                       Execute one size 2                                               Trade 1 size three card from your hand.
+                                           OR Execute one of your techs.
+
+
+
+
+                 RESEARCH                                                          REFINE
+
+
+
+
+                 Research 11 RY card                                   Refine one 1G mineral card for 11 point
+                  from your hand.                                                    per gem.
+
+
+
+
+These moves are both legal. If Red moved a Transport to the Research
+card, they would be able to use the card’s action text. The Cruiser would
+start a battle against Yellow.
+                                                                                                                                                  33
+REINFORCING:
+Using reinforcements
+                                             BATTLES
+effectively is critical to
+                             A battle occurs when two Cruiser fleets wind up on
+victory. Getting size 2
+and 3 cards into your
+                             the same gate. Combat is resolved by both players
+Plan or Techs can help       drawing a card from the deck for each Cruiser, and
+you in combat.               adding up the icons on all cards drawn. Each side can
+                             also add reinforcement cards from their hand.
+Always keep in mind
+your cards in hand as        A card in hand can be a reinforcement if it matches
+potential reinforce-         both the size and color a card on the Impulse, your
+ments when deciding
+                             Plan, or either of your Techs (not Minerals).
+what to put on the
+Impulse or the Sector
+Map!                         The defending player places any number of cards
+                             face-down in front of them, followed by the attacker.
+
+34
+All are revealed, and any “bluff” cards (ones that do not match) are returned
+to that player’s hand. Then each player adds 1 card per Cruiser to their
+reinforcements. The player with more total icons (defender in a tie) is the
+winner. The entire losing fleet is destroyed, and the winner scores 1 point
+for winning, plus 1 additional point per ship destroyed. All the cards used
+in the battle are then discarded.
+
+A battle ends a fleet’s movement. If a Command card allows you to move
+multiple fleets, they can all converge for one battle.
+
+
+
+
+                                                                                35
+SABOTAGE:                 RESEARCH
+                          Research allows you to upgrade the Techs on your
+Since the deck is 50%     player board, giving you an action each turn that you
+size 1 cards, you can     do not have to share with opponents. Your Techs go
+roughly count on
+                          on your Command Center, overlaying one of the two
+one out of every two
+bombs connecting.         Basic Techs printed on it. Discard Techs when replaced.
+                          Once covered up, Basic Techs are gone!
+Since you are not
+particularly lucky, you   EXECUTE
+should instead count      Execute will let you perform an Action Card’s text once
+on roughly one out        and then discard it without placing it on the Impulse
+of every four bombs
+                          to be shared with others. Alternately, you can activate
+connecting.
+                          one of your Techs.
+
+
+
+
+36
+BUILD
+Build actions construct new ships. The Build card will specify where you
+can build your ships and whether they are Cruisers or Transports. Some
+will allow you to build either type. You are limited to 12 ships, and if you
+run out you cannot build additional ships until some are destroyed. You
+cannot voluntarily destroy your own ships. Ships can be built on enemy
+patrolled cards, but you cannot build a Cruiser on a gate containing
+another player’s Cruisers.
+
+SABOTAGE
+Sabotage allows you to destroy enemy ships without fighting them head-
+on. You can only Sabotage ships on cards that you patrol with Cruisers or
+occupy with Transports. For each bomb targeting a fleet, reveal 1 card from
+the deck. For each size 2+ card revealed, destroy 1 ship in that fleet, and
+score a point. Do not score points for overkill. For example: 4 hits on a
+2-ship fleet scores 2 points, not 4.
+                                                                               37
+PLAN TIMING:              PLAN
+                          The Plan action adds cards to the end of your Command
+Having a good Plan        Center’s Plan. Plan cards are ordered, much like the
+on your Command           Impulse. After using all the cards on the Impulse, you
+Center is good
+                          have the option to use or delay your Plan. If you use
+for many reasons
+(especially combat        it, you use each card in your Plan, and then discard it.
+reinforcements!), so      You cannot delay your Plan if it has at least 4 cards. If
+waiting to use it isn’t   you are using your Plan and are required to add more
+a bad idea.               cards to it, they go into a new Plan that can be used on
+                          your next turn.
+A big Plan / full
+hand can also be a
+                          DRAW
+deterrent to being
+attacked.                 Draw allows you to take cards into your hand directly
+                          from the deck. Remember that you have a limit of 10
+                          cards in hand, and once reached no additional cards
+                          may be drawn.
+38
+TRADE
+Trade allows you to discard cards from your hand or the deck to score
+points. A traded card is worth points equal to its size.
+
+MINE
+Mine allows you to add cards to the Minerals section of your Command
+Center. These will allow you to boost your future actions of matching color.
+Tuck them under your Command Center so only the gems are showing.
+
+REFINE
+Refine allows you to convert Mineral cards from your Command Center into
+many points. Refining a card sends it to the discard pile, which means it will
+no longer boost actions. Note that the boost is calculated before discarding
+the card -- you don’t lose the bonus mid-action if the gems match the color
+of the Refine card.
+
+                                                                                 39
+BGG ROCKS:
+As some of you are no
+                                         CREDITS
+doubt aware, we beta
+                          Impulse © 2014 Asmadi Games
+test and proofread
+our rulebooks with
+BoardGameGeek.            Designed by Carl Chudyk
+It is immensely useful,   Developed by Chris Cieslik
+and thanks again to       Art and Design by Alanna Cervenak, Cara Judd
+everyone who helped!
+                          Playtesting: Shuai Li Fang, Aerjen Tamminga, Evan
+We encourage you          Dunn, Daniel Hutchins, Andy Latto, Anthony Rubbo,
+to support the site if
+                          Christopher Yoder, Rafał Kruczek, Ari Iwan, Timothy
+you don’t already, and
+come to BGGCon,           Iwan, Dave Kudzma, Jonathan Harrison, everyone from
+because it is awesome.    the Beta program, folks from the Boston Festival of
+                          Indie Games, anyone who joined us in the Department
+                          of Fun at Gen Con, and my local game nights!
+40
+For rules or other questions, check the BoardGameGeek forums for
+Impulse, visit our website at AsmadiGames.com, or contact us through
+email at AsmadiGames@gmail.com
+
+
+
+
+                                     FOLLOW US AT
+                                     www.facebook.com/AsmadiGames
+                                     www.twitter.com/AsmadiGames
+
+
+
+
+                                                                       41
+IF IN DOUBT:
+In general, if you can’t
+                                                      FAQ
+do an entire thing in      Q: What if there is no discard pile and the deck is empty?
+Impulse, do as much        A: In this rare scenario, all players discard two cards from their
+as you can and ignore      hand to form a new deck.
+the rest.
+                           Q: Can I move Transports onto a card with enemy Transports?
+                           A: Yes, as long as no enemy Cruisers patrol that card.
+
+                           Q: Can I patrol an enemy Home with a Cruiser?
+                           A: Yes. This has no effect other than making their life difficult.
+
+                           Q: I created an infinite loop!
+                           A: Yes, you can move Transports back and forth between two
+                           Command cards. You should probably stop eventually.
+
+
+
+42
+Q: What does “The last card on the impulse” mean on my Basic Tech?
+A: These refer to the bottom card, the one most recently played.
+
+Q: My Build card allows me to build more ships than I have available.
+   What do I do?
+A: Remember that any part of an action is optional! So you can always choose which
+ships to build out of the options available.
+
+Q: My opponent just scored 12 points on a Refine action!
+    Is that supposed to happen?
+A: Yep! Impulse is not meant to be a long drawn out game -- if you don’t move in on
+an opponent amassing Mineral cards for a big sale, don’t expect to win by claiming 1
+or 2 points a turn at the Sector Core.
+
+Q: If I add matching gems during a Mine action, do I boost the rest of it?
+A: No. The level of a boost is calculated before the action begins.
+
+
+
+                                                                                       43
+   One giant leap.
+
+
+
+
+©Asmadi Games, 2014
+

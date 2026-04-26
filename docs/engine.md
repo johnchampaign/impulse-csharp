@@ -311,41 +311,89 @@ on `GameState`).
 
 ---
 
-## 10. First-5 mechanics rollout order
+## 10. Rollout order — UI-first, then play-frequency
 
-The plan for landing engine code in shippable slices. Each slice ends with
-a green test suite + a runnable WPF build.
+Goal: lock look-and-feel **before** any rules code, then make the game
+playable end-to-end as early as possible against a restricted deck, then
+grow the deck additively. Each post-A slice ends green-tests + runnable
+WPF build.
 
-1. **Map + setup.** `SectorMap`, `MapFactory`, initial ship placement,
-   initial hand deal, initial Impulse seed (if any per p.5), tech-slot
-   init. `GameState` populated; no actions runnable yet. Tests:
-   deterministic setup snapshot.
+**Testing discipline:** tests land alongside code from slice A onward,
+not deferred. Slice A still has tests — for the `Card`/TSV loader,
+`SectorMap` factory, and any pure-data plumbing the UI consumes (data
+integrity, not behavior). Slice B onward adds behavioral tests for every
+new code path: turn-loop transitions, scoring sources, each card-family
+handler, sub-machine steps. No slice merges with new untested code
+paths.
 
-2. **Phases 1, 5, 6 only — no Tech, Impulse, or Plan.** Stub Phases 2/3/4
-   to immediate-skip. Player can place to Impulse and end turn; Phase 5
-   awards Sector Core scoring; Phase 6 trims/draws. Validates turn loop,
-   `Scoring.AddPrestige`, GameOver propagation.
+### Slice A — UI shell, no game logic
 
-3. **Movement + activation, stub effects.** Real Phase 3 cursor walking.
-   Real `DeclareMoveRequest` + path resolution (no exploration yet — path
-   must be over explored territory). Build action functional. All other
-   card effects stubbed to `return false`. Validates `EffectContext`,
-   pause/resume, `IPlayerController` round-trip with `RandomController`.
+WPF `MainWindow` with the full visual layout:
 
-4. **Command card real effects + move legality.** Implement the Command
-   family fully (one transport N moves, one cruiser N moves, multi-fleet
-   variants — p.32 LEGAL MOVES). Patrol/occupy interactions with enemy
-   ships. Tests: scripted move legality matrix.
+- Hex map rendered from `SectorMap`, ships drawn at nodes/gates, home
+  markers, Sector Core highlight.
+- Active player's hand panel (cards rendered from `Card` records, art
+  optional — text + color band acceptable).
+- Shared Impulse track (FIFO, `[0]` at top).
+- Per-player Plan stack + tech-slot pair + prestige bar.
+- Log pane (mirrors `GameLog`).
+- Phase indicator + turn/active-player banner.
 
-5. **Battle + exploration sub-machines.** `BattleState`, 4-step battle
-   resolution with reinforcement matching (Plan/Impulse/Techs union, **not
-   Minerals**). `ExplorationState`, full-path-first declaration, flip
-   resolution. Tests: battle scenarios from rulebook examples; exploration
-   path with mid-path forced halt.
+Renders a hand-built `GameState` fixture loaded from a fixed seed so
+layout iteration is deterministic. Every button is a no-op (or logs "TODO").
+**No `TurnManager`, no `EffectRegistry`, no controllers.** Goal: pin
+colors, spacing, click affordances, log readability. Bar: "it boots and
+looks right."
 
-After slice 5, every subsequent card family is an additive `RegisterMulti`
-call against the existing engine. Build, Plan, Research, Mine, Refine,
-Trade, Sabotage all reuse infrastructure landed in 1–5.
+### Slice B — playable skeleton, one card family
+
+End-to-end 6-phase loop with a deck filtered to an **allowlist** of
+`EffectFamily` slugs. Allowlist starts at every Command family
+(`command_*`). Cards outside the allowlist are removed from the deck,
+the Impulse track, and starting hands at load time — the game is
+strictly smaller, never broken.
+
+- Phase 1 (place to Impulse), 5 (score), 6 (trim/draw): real.
+- Phase 3: cursor walks the track; only Command cards are usable, others
+  auto-skip. `DeclareMoveRequest` + path resolution over explored
+  territory only.
+- Phase 2 (Tech), 4 (Plan): immediate-skip.
+- Battle: stubbed — moving onto an enemy-occupied node/gate is treated
+  as illegal (filtered out of move-legality at request-construction time)
+  rather than triggering combat.
+- Exploration: stubbed — outer ring starts face-up.
+- Controllers: `HumanController` + `RandomController` both work.
+
+Bar: scripted-controller test plays a full game to prestige ≥ 20 or
+deck-out without throwing; a human can play a turn through the WPF UI.
+
+### Slice C+ — additive card families, in play-frequency order
+
+Each slice adds one family to the allowlist. Order driven by "what does
+the early game most need":
+
+| # | Family | Rationale |
+|---|---|---|
+| C1 | `build_*` | Replaces the unrealistic full-fleet starting position; you need to make ships before Command matters much. |
+| C2 | `mine_*`, `refine_*` | First prestige source beyond Sector Core; gets the score bar moving. |
+| C3 | `trade_*`, `draw_*` | Hand-shaping; lets the player steer. |
+| C4 | `plan_*` (Phase 4 turns on) | Multi-card combos, big swing turn. |
+| C5 | Exploration sub-machine | Lights up outer ring; required before mid-game movement is interesting. |
+| C6 | Battle sub-machine | Combat at gates; unblocks aggressive Command + Sabotage. |
+| C7 | `sabotage_*` | Needs Battle's ship-destruction path. |
+| C8 | `research_*`, `execute_*`, Phase 2 Tech turns on | Tech overwrite, recursive effect invocation, nested-frame save/restore. |
+
+Each Cn slice: add registrations, extend the allowlist, add tests for
+that family's representative cards (one per distinct slug). The deck
+grows monotonically; older tests stay green.
+
+### Why this ordering
+
+UI-first delays the first green test to slice B (vs. the older
+test-driven plan that started at setup). The trade is iteration speed on
+look-and-feel against a few weeks of rules-only progress invisible to
+the user. Play-frequency ordering after that means the game is *playable
+in some form* every slice — not just *correct in some sub-system*.
 
 ---
 

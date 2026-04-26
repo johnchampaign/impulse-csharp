@@ -1,9 +1,53 @@
-﻿<Application x:Class="Impulse.Wpf.App"
+<Application x:Class="Impulse.Wpf.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:Impulse.Wpf"
-             StartupUri="MainWindow.xaml">
+             StartupUri="MainWindow.xaml"
+             ShutdownMode="OnLastWindowClose">
     <Application.Resources>
-         
+        <!-- Space-theme palette -->
+        <SolidColorBrush x:Key="BgDark" Color="#0B0F1A"/>
+        <SolidColorBrush x:Key="BgPanel" Color="#141B2D"/>
+        <SolidColorBrush x:Key="BgPanel2" Color="#1C2540"/>
+        <SolidColorBrush x:Key="FgPrimary" Color="#E8ECF5"/>
+        <SolidColorBrush x:Key="FgMuted" Color="#7E8AA8"/>
+        <SolidColorBrush x:Key="Accent" Color="#5BC0FF"/>
+        <SolidColorBrush x:Key="GateStroke" Color="#3A4768"/>
+        <SolidColorBrush x:Key="NodeFill" Color="#1F2A45"/>
+        <SolidColorBrush x:Key="NodeStroke" Color="#5079B8"/>
+        <SolidColorBrush x:Key="SectorCoreFill" Color="#3A2E5C"/>
+        <SolidColorBrush x:Key="SectorCoreStroke" Color="#B68CFF"/>
+
+        <!-- Card colors -->
+        <SolidColorBrush x:Key="CardBlue"   Color="#5BC0FF"/>
+        <SolidColorBrush x:Key="CardYellow" Color="#FFD45A"/>
+        <SolidColorBrush x:Key="CardRed"    Color="#FF6B6B"/>
+        <SolidColorBrush x:Key="CardGreen"  Color="#7AE07A"/>
+
+        <!-- Player colors -->
+        <SolidColorBrush x:Key="PlayerBlue"   Color="#4A8FE8"/>
+        <SolidColorBrush x:Key="PlayerGreen"  Color="#4ED66B"/>
+        <SolidColorBrush x:Key="PlayerPurple" Color="#A56BE0"/>
+        <SolidColorBrush x:Key="PlayerRed"    Color="#E55A5A"/>
+        <SolidColorBrush x:Key="PlayerWhite"  Color="#EAEAEA"/>
+        <SolidColorBrush x:Key="PlayerYellow" Color="#E8C341"/>
+
+        <Style TargetType="TextBlock" x:Key="Label">
+            <Setter Property="Foreground" Value="{StaticResource FgMuted}"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="Body">
+            <Setter Property="Foreground" Value="{StaticResource FgPrimary}"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="Heading">
+            <Setter Property="Foreground" Value="{StaticResource FgPrimary}"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
     </Application.Resources>
 </Application>

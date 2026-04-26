@@ -1,1 +1,109 @@
 Id	ActionType	Color	Size	BoostNumber	EffectFamily	EffectText
+1	Draw	Green	1	1	draw_one_then_one_of_two_colors	Draw one card from the deck. Then draw [1][R] or [Y] card from the deck.
+2	Research	Red	1	1	research_size_n_from_hand	Research one size [1] card from your hand.
+3	Draw	Blue	1	1	draw_one_then_one_of_two_colors	Draw one card from the deck. Then draw [1][R] or [G] card from the deck.
+4	Command	Yellow	2	2	command_n_ship_fleet_one_move	Command a [1] ship fleet for one move.
+5	Draw	Green	3	3	draw_n_from_deck	Draw [2] cards from the deck.
+6	Command	Yellow	2	2	command_n_cruiser_fleet_one_move	Command a [2] Cruiser fleet for one move.
+7	Mine	Red	2	2	mine_size_n_from_hand	Mine one size [1] card from your hand.
+8	Plan	Green	1	1	plan_n_color_from_hand	Plan [2][B] cards from your hand.
+9	Sabotage	Red	2	2	sabotage_cruiser_fleet_n_bombs	Sabotage a Cruiser fleet with [3] bombs.
+10	Build	Blue	1	1	build_n_transport_at_home	Build [1] Transport at home.
+11	Trade	Blue	1	1	trade_n_color_from_hand	Trade [1][R] card from your hand.
+12	Command	Green	2	2	command_n_fleets_one_move_same_card	Command [1] fleet for one move apiece. Each must move to the same card.
+13	Command	Yellow	3	3	command_two_ship_fleet_n_moves	Command a two ship fleet for [1] move.
+14	Plan	Green	1	1	plan_n_color_from_hand	Plan [2][Y] cards from your hand.
+15	Sabotage	Red	1	1	sabotage_fleet_n_bombs	Sabotage a fleet with [1] bomb.
+16	Trade	Yellow	1	1	trade_n_color_from_hand	Trade [1][B] card from your hand.
+17	Trade	Blue	1	1	trade_n_color_from_hand	Trade [1][G] card from your hand.
+18	Research	Red	3	3	research_size_n_from_hand_then_execute	Research one size [1] card from your hand. Then Execute it.
+19	Mine	Red	2	2	mine_size_n_from_deck	Mine [1] size two card from the deck.
+20	Research	Red	2	2	research_n_color_from_hand	Research [1][G] card from your hand.
+22	Build	Blue	1	1	build_n_cruiser_at_home	Build [1] Cruiser at home.
+23	Mine	Green	1	1	mine_n_color_from_hand	Mine [1][R] card from your hand.
+24	Sabotage	Red	2	2	sabotage_transport_fleet_n_bombs	Sabotage a Transport fleet with [3] bombs.
+25	Plan	Green	1	1	plan_n_color_from_hand	Plan [2][R] cards from your hand.
+26	Command	Yellow	2	2	command_n_ship_fleet_one_move	Command a [1] ship fleet for one move.
+27	Build	Blue	2	2	build_n_transport_at_occupied	Build [1] Transport at a location you occupy.
+28	Trade	Blue	1	1	trade_n_color_from_hand	Trade [1][Y] card from your hand.
+29	Mine	Red	1	1	mine_n_color_from_hand	Mine [1][B] card from your hand.
+30	Build	Blue	1	1	build_n_cruiser_at_home	Build [1] Cruiser at home.
+31	Command	Yellow	1	1	command_one_cruiser_n_moves	Command one Cruiser for [1] move.
+32	Build	Blue	2	2	build_n_ship_home_and_each_occupied	Build [1] ship at home and at each other [Y] you occupy.
+33	Build	Blue	3	3	build_n_ships_at_occupied	Build [2] ships at a location you occupy.
+34	Plan	Green	2	2	plan_n_different_colors	Plan [2] cards of different color from your hand.
+35	Command	Yellow	1	1	command_one_transport_n_moves	Command one Transport for [1] move.
+36	Trade	Blue	1	1	trade_n_color_from_hand	Trade [1][Y] card from your hand.
+37	Build	Blue	1	1	build_n_cruiser_at_home	Build [1] Cruiser at home.
+38	Command	Yellow	1	1	command_one_cruiser_n_moves	Command one Cruiser for [1] move.
+39	Command	Yellow	2	2	command_two_cruiser_fleet_n_moves	Command a two Cruiser fleet for [1] move.
+40	Command	Yellow	2	2	command_n_transport_fleet_two_moves	Command a [1] Transport fleet for two moves.
+41	Command	Yellow	1	1	command_n_transport_fleet_one_move	Command a [1] Transport fleet for one move.
+42	Command	Yellow	2	2	command_n_ship_fleet_one_move	Command a [1] ship fleet for one move.
+43	Refine	Green	3	3	refine_n_mineral_card_per_gem	Refine [1] mineral card for one point per gem.
+44	Command	Yellow	1	1	command_one_cruiser_n_moves	Command one Cruiser for [1] move.
+45	Sabotage	Red	3	3	sabotage_fleet_n_bombs	Sabotage a fleet with [2] bombs.
+46	Refine	Green	1	1	refine_n_color_mineral_per_gem	Refine one [Y] mineral card for [1] point per gem.
+47	Refine	Blue	1	1	refine_n_color_mineral_per_gem	Refine one [G] mineral card for [1] point per gem.
+48	Build	Blue	1	1	build_n_transport_at_home	Build [1] Transport at home.
+49	Plan	Green	2	2	plan_n_size_from_deck	Plan two size [1] cards from the deck.
+50	Plan	Green	2	2	plan_n_size_from_hand	Plan [2] size one cards from your hand.
+51	Plan	Green	3	3	plan_card_then_n_same_color_from_deck	Plan a card from the deck. Then, plan [2] cards of its color from the deck.
+52	Build	Blue	2	2	build_n_ship_home_and_each_occupied	Build [1] ship at home and at each other [G] you occupy.
+53	Trade	Yellow	1	1	trade_n_color_from_hand	Trade [1][B] card from your hand.
+54	Research	Red	1	1	research_size_n_from_hand	Research one size [1] card from your hand.
+55	Command	Yellow	3	3	command_two_ship_fleet_n_moves	Command a two ship fleet for [1] move.
+56	Command	Yellow	1	1	command_n_transport_fleet_one_move	Command a [1] Transport fleet for one move.
+57	Build	Blue	2	2	build_n_ship_home_and_each_occupied	Build [1] ship at home and at each other [B] you occupy.
+58	Mine	Red	2	2	mine_size_n_from_hand	Mine one size [1] card from your hand.
+59	Plan	Blue	1	1	plan_n_color_from_hand	Plan [2][G] cards from your hand.
+60	Research	Red	2	2	research_n_color_from_hand	Research [1][Y] card from your hand.
+61	Mine	Red	2	2	mine_n_size_from_deck	Mine two size [1] cards from the deck.
+62	Build	Blue	2	2	build_n_ship_home_and_each_occupied	Build [1] ship at home and at each other [R] you occupy.
+63	Research	Blue	3	3	research_n_size_from_deck	Research two size [1] cards from the deck.
+64	Execute	Green	3	3	execute_size_n_or_tech	Execute one size [2] card from your hand OR Execute one of your Techs.
+65	Execute	Blue	3	3	execute_size_n_or_tech	Execute one size [2] card from your hand OR Execute one of your Techs.
+66	Draw	Green	2	2	draw_n_size_from_deck	Draw [3] size one cards from the deck.
+67	Refine	Green	1	1	refine_n_color_mineral_per_gem	Refine one [B] mineral card for [1] point per gem.
+68	Trade	Blue	2	2	trade_n_size_from_hand	Trade two size [1] cards from your hand.
+69	Command	Yellow	1	1	command_one_cruiser_n_moves	Command one Cruiser for [1] move.
+70	Command	Yellow	1	1	command_one_cruiser_n_moves	Command one Cruiser for [1] move.
+71	Command	Yellow	1	1	command_n_transport_fleet_one_move	Command a [1] Transport fleet for one move.
+72	Mine	Red	1	1	mine_n_color_from_hand	Mine [1][Y] card from your hand.
+73	Mine	Red	1	1	mine_size_n_from_deck	Mine one size [1] card from the deck.
+74	Research	Red	2	2	research_n_color_from_hand	Research [1][B] card from your hand.
+75	Command	Yellow	3	3	command_n_fleets_one_move_same_card	Command [2] fleets for one move apiece. Each must move to the same card.
+76	Research	Green	2	2	research_n_color_from_hand	Research [1][R] card from your hand.
+77	Research	Red	1	1	research_size_n_from_hand	Research one size [1] card from your hand.
+78	Command	Green	1	1	command_n_fleets_one_move_same_card	Command [1] fleet for one move apiece. Each must move to the same card.
+79	Sabotage	Red	1	1	sabotage_cruiser_fleet_n_bombs	Sabotage a Cruiser fleet with [2] bombs.
+80	Draw	Green	1	1	draw_one_then_one_of_two_colors	Draw one card from the deck. Then draw [1][B] or [R] card from the deck.
+81	Command	Yellow	1	1	command_one_transport_n_moves	Command one Transport for [1] move.
+82	Execute	Green	1	1	execute_size_n_from_deck_or_tech	Execute one size [1] card from the deck OR Execute one of your Techs.
+83	Trade	Blue	2	2	trade_n_size_from_hand	Trade [1] size three card from your hand.
+84	Trade	Blue	1	1	trade_n_color_from_hand	Trade [1][R] card from your hand.
+85	Mine	Red	1	1	mine_n_color_from_hand	Mine [1][G] card from your hand.
+86	Execute	Green	1	1	execute_size_n_from_deck_or_tech	Execute one size [1] card from the deck OR Execute one of your Techs.
+87	Draw	Red	1	1	draw_one_then_one_of_two_colors	Draw one card from the deck. Then draw [1][G] or [Y] card from the deck.
+88	Command	Yellow	2	2	command_two_transport_fleet_n_moves	Command a two Transport fleet for [1] move.
+89	Execute	Green	2	2	execute_size_n_from_hand_or_tech	Execute one size [1] card from your hand OR Execute one of your Techs.
+90	Draw	Green	2	2	draw_n_size_from_deck	Draw [3] size one cards from the deck.
+91	Command	Yellow	3	3	command_n_ship_fleet_two_moves	Command a [1] ship fleet for two moves.
+92	Mine	Red	3	3	mine_size_n_from_hand	Mine [1] size two card from your hand.
+93	Mine	Red	3	3	mine_n_size_from_hand	Mine two size [1] cards from your hand.
+94	Command	Yellow	1	1	command_one_transport_n_moves	Command one Transport for [1] move.
+95	Trade	Blue	3	3	trade_n_size_from_deck	Trade [1] size one card from the deck.
+96	Research	Red	3	3	research_n_size_from_deck	Research two size [1] cards from the deck.
+97	Execute	Green	1	1	execute_size_n_from_deck_or_tech	Execute one size [1] card from the deck OR Execute one of your Techs.
+98	Command	Green	3	3	command_n_fleets_one_move_same_card	Command [2] fleets for one move apiece. Each must move to the same card.
+99	Trade	Blue	1	1	trade_n_color_from_hand	Trade [1][G] card from your hand.
+100	Command	Yellow	2	2	command_n_ship_fleet_one_move	Command a [1] ship fleet for one move.
+101	Research	Red	1	1	research_n_from_plan_keep_order	Research [1] card from your Plan, leaving the other cards in the same order.
+102	Mine	Red	1	1	mine_size_n_from_deck	Mine one size [1] card from the deck.
+103	Draw	Green	1	1	draw_one_then_one_of_two_colors	Draw one card from the deck. Then draw [1][B] or [Y] card from the deck.
+104	Sabotage	Red	1	1	sabotage_transport_fleet_n_bombs	Sabotage a Transport fleet with [2] bombs.
+105	Command	Yellow	3	3	command_n_ship_fleet_two_moves	Command a [1] ship fleet for two moves.
+106	Refine	Blue	3	3	refine_n_mineral_card_flat_points	Refine one mineral card for [2] points.
+107	Refine	Green	1	1	refine_n_color_mineral_per_gem	Refine one [R] mineral card for [1] point per gem.
+108	Draw	Yellow	1	1	draw_one_then_one_of_two_colors	Draw one card from the deck. Then draw [1][B] or [G] card from the deck.
+109	Build	Blue	2	2	build_n_cruiser_at_occupied	Build [1] Cruiser at a location you occupy.

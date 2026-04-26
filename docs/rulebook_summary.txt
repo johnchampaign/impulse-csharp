@@ -1,0 +1,164 @@
+Impulse rules summary
+Object: Each player commands a fleet of transports and cruisers that are exploring a
+sector of the galaxy. Through mining, research, and combat, players earn Space
+Prestige points. The winner is the first player to gain 20 points.
+
+Setup:
+1. Each player chooses a race (or is given one randomly) and takes its Command
+   Center card and all the ships of a chosen color.
+2. Each player places one ship in the “0” space on the Space Prestige Board.
+3. Place the Sector Core card in the middle of the table. Shuffle the rest of the cards
+   and lay cards out face down according to page 5 of the rulebook to create the Sector
+   Map.
+4. Deal 5 cards to each player.
+5. Each player chooses a home card according to the number of players (see page 5 of
+   the rulebook).
+6. Take your home card into your hand, choose a card from your hand, and place it face
+   up in the home card spot (you may choose the original home card or a different
+   card).
+7. Place two transports (standing up) on your home card and one cruiser on your home
+   card’s gate facing the Sector Core.
+8. Randomly determine the start player.
+
+Cards: Each card has an Action Type on the top, an Effect on the bottom, a color, a
+Size (in 1, 2, or 3 icons), and six gates along the edges.
+If the draw deck ever becomes depleted, shuffle the discard pile to form a new deck.
+You can never have more than 10 cards in your hand (e.g., if you have 9 cards at the end
+of your turn, you only draw 1 card in Phase 6). The only exception is if you had 10
+cards when exploring a new card, you will take that card into your hand as per normal.
+All actions (and parts of actions) on cards are optional and may be skipped. Phase 1 is
+the only mandatory element in the game.
+Actions that instruct you to do something “from the deck” mean that you reveal cards
+from the top of the deck one at a time, checking each to see if it satisfies the condition.
+If it does, perform that action. If not, discard it.
+There are 27 cards of each color in the deck. Just over half are Size 1, about a third are
+Size 2, and about a sixth are Size 3. The 108 cards are: 27 Command, 12 Build, 12
+Mine, 11 Research, 11 Trade, 9 Draw, 8 Plan, 6 Execute, 6 Refine, and 6 Sabotage.
+
+Numbers and Boosting: All numbers on a card are “up to”. Any number on a card can
+be reduced (e.g., if instructed to mine two size [3] cards, you could also use it to mine
+size 1 or 2 cards).
+The number in the white box in every card’s Effect may be boosted by one or a
+combination of both of the following:
+   If you have Mineral cards in your Command Center matching the color of the
+      action card, the number is boosted by 1 for every 2 gems you have of that color.
+      The gems are not spent, you keep them.
+   If the action is on a card on the map, you also count each transport that activated
+      it with a Command action as 1 matching gem.
+The action on the Sector Core may be boosted by a color of your choice.
+
+Player Turns: Each player turn has the following 6 phases:
+
+Phase 1 – Add a card to the Impulse: You must place one card from your hand onto
+the Impulse next to the map below the last card placed on the Impulse. If your hand is
+empty, skip this phase.
+
+Phase 2 – Use one of your Techs: Use one of the two techs on your Command Center.
+Everyone starts with a common Basic Tech on the left side and a unique Basic Tech on
+the right.
+
+Phase 3 – Use Impulse cards, in order: You may use each card in the Impulse, in
+order starting at the top.
+Use the Impulse marker to show which card is currently being used.
+
+Phase 4 – Use or delay your Plan: You may use the card(s) in your Plan (in order),
+then discard all of the cards even if you did not use them all. You can delay using your
+Plan until a future turn unless it has 4 or more cards in it (in which case you must use
+your Plan). If using your Plan causes more cards to be added, they go into a new Plan.
+
+Phase 5 – Score Sector Core points: Score 1 point for each cruiser fleet you have on a
+gate patrolling the Sector Core. The number of ships in a fleet is irrelevant.
+
+Phase 6 – Draw two, trim Impulse: Draw 2 cards and trim the Impulse down to 3
+cards by discarding the top card.
+
+Command: A ship is any ship on the Sector Map.
+A cruiser is any ship on a gate.
+A transport is any ship on the center of a card.
+You occupy any card where you have a transport.
+You patrol a card if you have a cruiser on any of the card’s gates.
+A fleet is one or more transports on the same card or one or more cruisers on the same
+gate.
+A fleet of cruisers on a gate patrols both adjacent cards.
+One move for a transport is from one card through a gate to an adjacent card.
+One move for a cruiser is from one gate through one of the two cards that it patrols to
+another gate on that card. Cruisers cannot be on a gate that touches the edge of the
+Sector Map.
+If a card allows you to move a fleet, you can leave one or more ships behind if desired.
+However, all of the moving ships must move to the same destination.
+If you move a ship onto or through a face down card, you explore it (done as per step 6
+under Setup). If your ship moves through multiple face down cards, explore them one
+by one. Note that you must declare your entire move before exploring any cards.
+A transport cannot move to a card patrolled by an enemy cruiser but can enter an
+unpatrolled card that is occupied by enemy transports.
+A cruiser cannot move through a card patrolled by an enemy cruiser, except to start a
+battle by landing on one of the gates patrolled by an enemy cruiser(s).
+A cruiser that moves through a card containing enemy transports destroys them (1 point
+each) unless the move results in a battle (because the card was patrolled). In that case
+the transports are only destroyed if the cruiser won the battle.
+When a transport ends its movement, it activates the card it landed on [EXC: it cannot
+activate the card that it started its action on].
+If a Command card allows you to move multiple fleets, all of the fleets must move to
+the same card. They can converge for one battle. If moving transports, they activate the
+card once after completing their moves. If moving cruisers, each fleet could move to a
+different gate on the card, possibly starting multiple battles. You could also move one
+transport fleet and one cruiser fleet. But you cannot move the same fleet twice with
+these cards.
+Battle
+    1. The defender may play reinforcements by placing any number of cards from his
+       hand face down in front of him. Only cards that match (in both size and color)
+       cards in the Impulse, his Techs, and cards in his Plan will end up counting. Cards
+       that don’t match can be placed face down (as a bluff).
+    2. The attacker may play reinforcements in the same manner.
+    3. All reinforcements are revealed and any bluff cards are returned to their owners’
+       hands.
+    4. Each player draws one card for each cruiser he has in the battle and adds them to
+       his reinforcements.
+    5. The side with the most total icons on their reinforcement cards wins. The
+       defender wins if tied.
+    6. Return all of the losing ships to their owner’s stock.
+    7. The winner gains 1 point for winning the battle, plus 1 point per ship destroyed.
+    8. Discard all reinforcement cards.
+A battle ends a ship’s movement.
+Research: Place a specified card onto your Command Center, covering up one of your
+Basic Techs or replacing a card researched previously (which gets discarded).
+
+Build: Specifies where and what can be built. You are limited to 12 ships. You cannot
+voluntarily destroy one of your ships. You can build ships on enemy-patrolled cards but
+you can’t build a cruiser on an enemy-occupied gate.
+
+Execute: Perform a card action, then discard it, or activate one of your Techs.
+
+Sabotage: Target the specified fleet on a card that you patrol with cruisers or occupy
+with transports.
+For each “bomb”, reveal one card from the deck. For each size 2 or 3 card revealed,
+destroy one ship in that fleet and score 1 point (up to the number of ships in the fleet).
+Reveal and discard a card for each “bomb”, even if more hits are scored than available
+targets.
+
+Plan: Add cards to the Plan side of your Command Center, placing them face up as if
+into your own private Impulse.
+
+Draw: Draw cards as specified, but no more than up to your hand size of 10 cards.
+
+Trade: Discard cards as specified to gain points equal to their size.
+
+Mine: Tuck cards under the Minerals side of your Command Center (so only the gems
+are showing) to use for boosting and refining.
+
+Refine: Discard cards from your Minerals to gain points as specified. Note that any
+boost from the cards still counts before they are refined.
+
+Game End: The game ends immediately when a player scores his 20th Space Prestige
+point, even if it is not his turn.
+If a player ever has no ships on the map, he is eliminated from the game.
+
+Team Rules: In four or six player games, you can play in teams of two or three.
+Alternate the seating of the teams around the table so that teammates are sitting opposite
+each other.
+You cannot fight your teammates, nor can your cruisers patrol the same gate at the same
+time. You can move through friendly cruisers and cards they patrol.
+Each team has its own Impulse, populated only by the cards its members play.
+All discussion between teammates must be open (i.e., all players can hear it).
+Points are still tracked per player. Your team wins if any player on the team reaches 20.
+
