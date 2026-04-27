@@ -1386,12 +1386,47 @@ public partial class MainWindow : Window
         var active = _g.Player(_g.ActivePlayer);
         ActivePlayerText.Text = $"{active.Id} {active.Race.Name}";
         ActivePlayerSwatch.Background = PlayerBrush(active.Color);
+        UpdateContextText();
 
         RenderMap();
         RenderImpulse();
         RenderPlayers();
         RenderHand(_g.Player(_human.Seat));
         RenderMinerals(_g.Player(_human.Seat));
+    }
+
+    // Show what card / source is currently driving the active prompt:
+    // - During Plan resolution → "Resolving Plan: <card>"
+    // - During Impulse resolution → "Resolving Impulse: <card>"
+    // - During tech use / activation → from PendingEffect.Source
+    private void UpdateContextText()
+    {
+        string ctx = "";
+        if (_g.IsResolvingPlan && _g.CurrentlyResolvingPlanCardId is int planCardId
+            && _g.CardsById.TryGetValue(planCardId, out var planCard))
+        {
+            ctx = $"▶ Resolving Plan: {planCard.ActionType}/{planCard.Color}/{planCard.Size} #{planCard.Id}";
+        }
+        else if (_g.Phase == GamePhase.ResolveImpulse
+                 && _g.ImpulseCursor < _g.Impulse.Count)
+        {
+            var ic = _g.CardsById[_g.Impulse[_g.ImpulseCursor]];
+            ctx = $"▶ Resolving Impulse: {ic.ActionType}/{ic.Color}/{ic.Size} #{ic.Id}";
+        }
+        else if (_g.PendingEffect?.Source is { } src)
+        {
+            int? cardId = src switch
+            {
+                EffectSource.ImpulseCard ic => ic.CardId,
+                EffectSource.PlanCard pc => pc.CardId,
+                EffectSource.TechEffect te => te.CardId,
+                EffectSource.MapActivation ma => ma.CardId,
+                _ => null,
+            };
+            if (cardId is int id && _g.CardsById.TryGetValue(id, out var c))
+                ctx = $"▶ Effect: {c.ActionType}/{c.Color}/{c.Size} #{c.Id}";
+        }
+        ContextText.Text = ctx;
     }
 
     private void RenderMinerals(PlayerState p)
@@ -1807,8 +1842,41 @@ public partial class MainWindow : Window
         stack.Children.Add(new TextBlock
         {
             Style = (Style)FindResource("Label"),
-            Text = $"hand {p.Hand.Count}   plan {p.Plan.Count}   minerals {p.Minerals.Count}   ships available {p.ShipsAvailable}",
+            Text = $"hand {p.Hand.Count}   plan {p.Plan.Count}   ships available {p.ShipsAvailable}",
         });
+
+        // Per-color gem totals (sum of mineral card sizes). The boost
+        // formula is gems / 2, so this is what determines power.
+        int RedGems = p.Minerals.Where(id => _g.CardsById[id].Color == CardColor.Red).Sum(id => _g.CardsById[id].Size);
+        int BlueGems = p.Minerals.Where(id => _g.CardsById[id].Color == CardColor.Blue).Sum(id => _g.CardsById[id].Size);
+        int GreenGems = p.Minerals.Where(id => _g.CardsById[id].Color == CardColor.Green).Sum(id => _g.CardsById[id].Size);
+        int YellowGems = p.Minerals.Where(id => _g.CardsById[id].Color == CardColor.Yellow).Sum(id => _g.CardsById[id].Size);
+        var gemRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+        gemRow.Children.Add(new TextBlock { Style = (Style)FindResource("Label"), Text = $"GEMS ({p.Minerals.Count} cards)  ", VerticalAlignment = VerticalAlignment.Center });
+        void AddGem(CardColor color, int n)
+        {
+            var swatch = new Border
+            {
+                Width = 12, Height = 12, CornerRadius = new CornerRadius(6),
+                Background = CardBrush(color),
+                Margin = new Thickness(0, 0, 3, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            gemRow.Children.Add(swatch);
+            gemRow.Children.Add(new TextBlock
+            {
+                Style = (Style)FindResource("Body"),
+                Text = $"{n}  ",
+                FontWeight = n > 0 ? FontWeights.Bold : FontWeights.Normal,
+                Foreground = n > 0 ? (Brush)FindResource("FgPrimary") : (Brush)FindResource("FgMuted"),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
+        AddGem(CardColor.Red, RedGems);
+        AddGem(CardColor.Blue, BlueGems);
+        AddGem(CardColor.Green, GreenGems);
+        AddGem(CardColor.Yellow, YellowGems);
+        stack.Children.Add(gemRow);
 
         // Tech slots
         var techRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };

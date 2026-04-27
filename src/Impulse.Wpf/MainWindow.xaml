@@ -13,9 +13,14 @@
 
         <Border Grid.Row="0" Background="{StaticResource BgPanel}" Padding="12,8">
             <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource Label}" Text="PROMPT" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="PromptText" Style="{StaticResource Body}" Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Vertical" HorizontalAlignment="Right">
+                    <TextBlock x:Name="ContextText" Style="{StaticResource Label}"
+                               Foreground="{StaticResource Accent}"
+                               HorizontalAlignment="Right" Margin="0,0,0,2"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <TextBlock Style="{StaticResource Label}" Text="PROMPT" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="PromptText" Style="{StaticResource Body}" Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource Label}" Text="TURN"/>
