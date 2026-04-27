@@ -196,10 +196,16 @@ public class BuildHandlerTests
             ActivatingPlayer = p1,
             Source = new EffectSource.ImpulseCard(32), // c32 → Yellow filter
         };
+        // Per-match prompts: pick the home node for the home build, then
+        // pick the match node (transport) for the yellow-occupied sector.
         Resolve(g, handler, ctx, choice =>
         {
             var req = (SelectShipPlacementRequest)choice;
-            req.Chosen = new ShipLocation.OnNode(home); // build home transport
+            // Pick a node from the legal list — prefer the home if offered,
+            // otherwise the first node (which is the match node).
+            var pick = req.LegalLocations.OfType<ShipLocation.OnNode>()
+                .FirstOrDefault(n => n.Node == home);
+            req.Chosen = pick ?? req.LegalLocations.First(l => l is ShipLocation.OnNode);
         });
 
         // Should have built 1 at home + 1 at the yellow-occupied node

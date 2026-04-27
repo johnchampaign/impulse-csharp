@@ -173,8 +173,14 @@ public sealed class BuildHomeAndEachOccupiedHandler : IEffectHandler
         _byCardId = byCardId;
     }
 
-    private enum Stage { Start, AwaitingHomePlacement, Done }
-    private sealed class State { public Stage Stage; public int Count; }
+    private enum Stage { Start, AwaitingHomePlacement, AwaitingMatchPlacement, Done }
+    private sealed class State
+    {
+        public Stage Stage;
+        public int Count;
+        public Queue<NodeId> Pending = new();
+        public NodeId? CurrentMatch;
+    }
 
     public bool Execute(GameState g, EffectContext ctx)
     {
@@ -225,18 +231,15 @@ public sealed class BuildHomeAndEachOccupiedHandler : IEffectHandler
             for (int i = 0; i < st.Count && p.ShipsAvailable > 0; i++)
                 Mechanics.BuildShip(g, ctx.ActivatingPlayer, loc, g.Log);
 
-            // Auto-build at each occupied non-home node whose face-up card
-            // matches the color filter. "Occupy" per rulebook p.27 = having
-            // a transport on the node (cruisers patrol, they don't occupy).
+            // Find each occupied non-home node whose face-up card matches
+            // the color filter. "Occupy" per rulebook p.27 = having a
+            // transport on the node (cruisers patrol, they don't occupy).
             var home = g.Map.HomeNodeIds[ctx.ActivatingPlayer];
-            var occupiedNonHome = g.ShipPlacements
+            var matches = g.ShipPlacements
                 .Where(sp => sp.Owner == ctx.ActivatingPlayer &&
                              sp.Location is ShipLocation.OnNode n && n.Node != home)
                 .Select(sp => ((ShipLocation.OnNode)sp.Location).Node)
                 .Distinct()
-                .ToList();
-            g.Log.Write($"  → occupied non-home nodes: [{string.Join(", ", occupiedNonHome)}]");
-            var matches = occupiedNonHome
                 .Where(nid =>
                 {
                     if (!g.NodeCards.TryGetValue(nid, out var s)) return false;
@@ -245,17 +248,54 @@ public sealed class BuildHomeAndEachOccupiedHandler : IEffectHandler
                 })
                 .ToList();
             if (matches.Count == 0)
-                g.Log.Write($"  → no other {prms.ColorFilter} sector with your transport — only home gets ships");
-            foreach (var nid in matches)
             {
-                g.Log.Write($"  → building at {nid} ({prms.ColorFilter} sector you occupy)");
-                var nodeLoc = new ShipLocation.OnNode(nid);
-                for (int i = 0; i < st.Count && p.ShipsAvailable > 0; i++)
-                    Mechanics.BuildShip(g, ctx.ActivatingPlayer, nodeLoc, g.Log);
+                g.Log.Write($"  → no other {prms.ColorFilter} sector with your transport — only home gets ships");
+                ctx.IsComplete = true;
+                return true;
             }
+            st.Pending = new Queue<NodeId>(matches);
+            return PromptNextMatch(g, ctx, st, prms);
+        }
+
+        if (st.Stage == Stage.AwaitingMatchPlacement)
+        {
+            var req = (SelectShipPlacementRequest)ctx.PendingChoice!;
+            var loc = req.Chosen ?? throw new InvalidOperationException("placement not chosen");
+            ctx.PendingChoice = null;
+            for (int i = 0; i < st.Count && p.ShipsAvailable > 0; i++)
+                Mechanics.BuildShip(g, ctx.ActivatingPlayer, loc, g.Log);
+            return PromptNextMatch(g, ctx, st, prms);
+        }
+        return false;
+    }
+
+    // Prompt for placement at the next matching occupied sector. Player
+    // can build a transport at the node OR a cruiser at any of its gates
+    // (excluding gates already containing an enemy cruiser, per p.36).
+    private static bool PromptNextMatch(GameState g, EffectContext ctx, State st, BuildHomeAndEachOccupiedParams prms)
+    {
+        var p = g.Player(ctx.ActivatingPlayer);
+        if (st.Pending.Count == 0 || p.ShipsAvailable <= 0)
+        {
             ctx.IsComplete = true;
             return true;
         }
+        var nid = st.Pending.Dequeue();
+        st.CurrentMatch = nid;
+        var legal = new List<ShipLocation> { new ShipLocation.OnNode(nid) };
+        foreach (var gate in g.Map.AdjacencyByNode[nid])
+            if (!Movement.HasEnemyCruiserOnGate(g, ctx.ActivatingPlayer, gate.Id))
+                legal.Add(new ShipLocation.OnGate(gate.Id));
+        ctx.PendingChoice = new SelectShipPlacementRequest
+        {
+            Player = ctx.ActivatingPlayer,
+            LegalLocations = legal,
+            Prompt = $"Build {st.Count} ship(s) at the {prms.ColorFilter} sector {nid} you occupy " +
+                     $"(transport on the node, or cruiser on an adjacent gate). " +
+                     $"{st.Pending.Count} more sector(s) after this.",
+        };
+        st.Stage = Stage.AwaitingMatchPlacement;
+        ctx.Paused = true;
         return false;
     }
 
