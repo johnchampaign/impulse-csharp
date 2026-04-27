@@ -1034,18 +1034,57 @@ public partial class MainWindow : Window
             case SelectTechSlotRequest ts:
                 PromptText.Text = ts.Prompt.Length > 0 ? ts.Prompt : "Choose a tech slot.";
                 ImpulseActionPanel.Children.Clear();
-                ImpulseActionPanel.Children.Add(BuildButton("LEFT", () =>
+                // Show the incoming card prominently so the player sees
+                // exactly what they're researching.
+                if (ts.IncomingCardId is int incoming && _g.CardsById.TryGetValue(incoming, out var incomingCard))
+                {
+                    ImpulseActionPanel.Children.Add(new TextBlock
+                    {
+                        Style = (Style)FindResource("Label"),
+                        Text = "▶ INCOMING CARD",
+                        Foreground = (Brush)FindResource("Accent"),
+                        FontWeight = FontWeights.Bold,
+                        Margin = new Thickness(0, 0, 0, 4),
+                    });
+                    ImpulseActionPanel.Children.Add(BuildPlanCard(incoming, resolving: true));
+                    ImpulseActionPanel.Children.Add(new TextBlock
+                    {
+                        Style = (Style)FindResource("Label"),
+                        Text = "Replace which slot?",
+                        Margin = new Thickness(0, 6, 0, 4),
+                    });
+                }
+                // Each slot button labels the tech currently there so the
+                // player knows what they'd be overwriting.
+                var humanPlayer = _g.Player(_human.Seat);
+                string TechLabel(Tech t) => t switch
+                {
+                    Tech.Researched r => $"#{r.CardId} {_g.CardsById[r.CardId].ActionType}/{_g.CardsById[r.CardId].Size}",
+                    Tech.BasicCommon => "Basic Common",
+                    Tech.BasicUnique bu => $"Basic ({bu.Race.Name})",
+                    _ => "?",
+                };
+                ImpulseActionPanel.Children.Add(BuildButton($"LEFT — currently: {TechLabel(humanPlayer.Techs.Left)}", () =>
                 {
                     ts.Chosen = TechSlot.Left;
                     ClearPrompt();
                     _human.CompleteChoice();
                 }));
-                ImpulseActionPanel.Children.Add(BuildButton("RIGHT", () =>
+                ImpulseActionPanel.Children.Add(BuildButton($"RIGHT — currently: {TechLabel(humanPlayer.Techs.Right)}", () =>
                 {
                     ts.Chosen = TechSlot.Right;
                     ClearPrompt();
                     _human.CompleteChoice();
                 }));
+                if (ts.AllowSkip)
+                {
+                    ImpulseActionPanel.Children.Add(BuildButton("SKIP (don't research)", () =>
+                    {
+                        ts.Chosen = null;
+                        ClearPrompt();
+                        _human.CompleteChoice();
+                    }));
+                }
                 break;
 
             case SelectFleetSizeRequest fs:

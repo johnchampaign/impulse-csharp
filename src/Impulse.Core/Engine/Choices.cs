@@ -68,6 +68,13 @@ public sealed record SelectFleetSizeRequest : ChoiceRequest
 public sealed record SelectTechSlotRequest : ChoiceRequest
 {
     public required PlayerId Player { get; init; }
+    // The card about to be installed into the chosen slot, when the prompt
+    // is part of a Research action. UIs should display this card prominently
+    // so the player knows what they are researching.
+    public int? IncomingCardId { get; init; }
+    // If true, the player may decline (Chosen = null). Used for Research,
+    // which is always optional per rulebook (drawn match can be discarded).
+    public bool AllowSkip { get; init; }
     public TechSlot? Chosen { get; set; }
 }
 

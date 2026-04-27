@@ -81,11 +81,13 @@ public sealed class ResearchHandler : IEffectHandler
             ctx.PendingChoice = null;
             if (handAns.ChosenCardId is null) { ctx.IsComplete = true; return true; }
             st.PickedCardId = handAns.ChosenCardId.Value;
-            // Prompt for slot.
+            // Prompt for slot. Hand-source: card stays in hand if skipped.
             ctx.PendingChoice = new SelectTechSlotRequest
             {
                 Player = ctx.ActivatingPlayer,
-                Prompt = $"Choose a tech slot to overwrite with #{st.PickedCardId}.",
+                IncomingCardId = st.PickedCardId,
+                AllowSkip = true,
+                Prompt = $"Choose a tech slot to overwrite with #{st.PickedCardId}, or SKIP to keep the card in hand.",
             };
             ctx.Paused = true;
             return false;
@@ -95,8 +97,29 @@ public sealed class ResearchHandler : IEffectHandler
         if (ctx.PendingChoice is SelectTechSlotRequest slotAns)
         {
             ctx.PendingChoice = null;
-            var slot = slotAns.Chosen ?? throw new InvalidOperationException("slot not chosen");
             int cardId = st.PickedCardId!.Value;
+            // Skip: undo the pick and stop researching for this slot.
+            // - Hand source: card stays in hand (it was never removed).
+            // - Deck source: card was already drawn, so it's discarded.
+            if (slotAns.Chosen is null)
+            {
+                if (prms.Source == ResearchSource.Deck)
+                {
+                    g.Discard.Add(cardId);
+                    g.Log.Write($"  → research skipped — #{cardId} discarded");
+                }
+                else
+                {
+                    g.Log.Write($"  → research skipped — #{cardId} stays in hand");
+                }
+                st.PickedCardId = null;
+                st.Remaining--;
+                if (st.Remaining <= 0) { ctx.IsComplete = true; return true; }
+                // Fall through to draw/prompt the next research slot.
+            }
+            else
+            {
+            var slot = slotAns.Chosen.Value;
 
             // Move card from its source to the tech slot.
             if (prms.Source == ResearchSource.Hand)
@@ -151,6 +174,7 @@ public sealed class ResearchHandler : IEffectHandler
                 return false;
             }
             // Loop continues for further deck-draws, or completes for hand source.
+            }
         }
 
         if (st.Remaining <= 0) { ctx.IsComplete = true; return true; }
@@ -187,7 +211,9 @@ public sealed class ResearchHandler : IEffectHandler
             ctx.PendingChoice = new SelectTechSlotRequest
             {
                 Player = ctx.ActivatingPlayer,
-                Prompt = $"Choose a tech slot to overwrite with #{drawn}.",
+                IncomingCardId = drawn,
+                AllowSkip = true,
+                Prompt = $"Choose a tech slot to overwrite with #{drawn}, or SKIP to discard.",
             };
             ctx.Paused = true;
             return false;

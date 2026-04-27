@@ -620,7 +620,9 @@ public sealed class DraconiansTechHandler : IEffectHandler
             ctx.PendingChoice = new SelectTechSlotRequest
             {
                 Player = ctx.ActivatingPlayer,
-                Prompt = $"Choose a tech slot to overwrite with #{st.PickedCardId}.",
+                IncomingCardId = st.PickedCardId,
+                AllowSkip = true,
+                Prompt = $"Choose a tech slot to overwrite with #{st.PickedCardId}, or SKIP to keep it in hand.",
             };
             st.Stage = Stage.AwaitingSlot;
             ctx.Paused = true;
@@ -631,8 +633,15 @@ public sealed class DraconiansTechHandler : IEffectHandler
         {
             var req = (SelectTechSlotRequest)ctx.PendingChoice!;
             ctx.PendingChoice = null;
-            var slot = req.Chosen ?? throw new InvalidOperationException("slot not chosen");
             int cardId = st.PickedCardId!.Value;
+            if (req.Chosen is null)
+            {
+                // Skip: card stays in hand (it was never removed).
+                g.Log.Write($"  → Draconians: research skipped — #{cardId} stays in hand");
+                ctx.IsComplete = true;
+                return true;
+            }
+            var slot = req.Chosen.Value;
             p.Hand.Remove(cardId);
             Mechanics.ResearchInto(g, ctx.ActivatingPlayer, slot, cardId, g.Log);
             ctx.IsComplete = true;
