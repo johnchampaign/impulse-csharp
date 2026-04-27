@@ -1,0 +1,57 @@
+name: Release
+
+# Triggers when a tag like `v1.0.2` is pushed. The job builds a
+# compressed self-contained Windows x64 exe and publishes a GitHub
+# release with the binary attached. No manual upload required.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # needed to create releases
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Run tests
+        run: dotnet test --no-restore -c Release --nologo
+
+      - name: Publish self-contained compressed exe
+        shell: pwsh
+        run: |
+          dotnet publish src/Impulse.Wpf/Impulse.Wpf.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:DebugType=embedded `
+            -o publish
+
+      - name: Rename asset to include the tag
+        shell: bash
+        run: |
+          mv "publish/Impulse.Wpf.exe" "publish/Impulse-${GITHUB_REF_NAME}-win-x64.exe"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "publish/Impulse-${GITHUB_REF_NAME}-win-x64.exe" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
