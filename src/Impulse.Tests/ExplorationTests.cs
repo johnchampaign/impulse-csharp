@@ -281,7 +281,8 @@ public class ExplorationTests
                                     p[0] is ShipLocation.OnNode n && n.Node == coreId);
                     break;
                 case SelectFleetSizeRequest fs: fs.Chosen = fs.Min; break;
-                case SelectFromOptionsRequest opt: opt.Chosen = (int)CardColor.Red; break;
+                // Display order is Red, Blue, Green, Yellow → Red is index 0.
+                case SelectFromOptionsRequest opt: opt.Chosen = 0; break;
             }
         });
 

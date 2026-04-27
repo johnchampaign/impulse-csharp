@@ -248,7 +248,10 @@ public sealed class AriekTechHandler : IEffectHandler
             var creq = (SelectFromOptionsRequest)ctx.PendingChoice!;
             int chosen = creq.Chosen ?? 0;
             ctx.PendingChoice = null;
-            var color = (CardColor)chosen;
+            // Display order: Red, Blue, Green, Yellow (NOT the CardColor
+            // enum order, which is Blue=0, Yellow=1, Red=2, Green=3).
+            var displayOrder = new[] { CardColor.Red, CardColor.Blue, CardColor.Green, CardColor.Yellow };
+            var color = displayOrder[Math.Clamp(chosen, 0, displayOrder.Length - 1)];
             var minerals = g.Player(ctx.ActivatingPlayer).Minerals;
             int gems = minerals.Where(id => g.CardsById[id].Color == color).Sum(id => g.CardsById[id].Size);
             int coreBoost = (gems + 1) / 2;
