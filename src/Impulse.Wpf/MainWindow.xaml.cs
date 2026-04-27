@@ -1679,14 +1679,40 @@ public partial class MainWindow : Window
         {
             var p = _g.Player(_g.ActivePlayer);
             ImpulseTrackLabel.Text = $"PLAN ({_g.ActivePlayer})";
-            ImpulseTrackSubLabel.Text = "resolving — top first";
+            ImpulseTrackSubLabel.Text = _g.CurrentlyResolvingPlanCardId is null
+                ? "resolving — top first"
+                : "▶ resolving the highlighted card";
+
             if (_g.CurrentlyResolvingPlanCardId is int currId)
             {
-                ImpulsePanel.Children.Add(BuildPlanCard(currId, isCursor: true));
+                ImpulsePanel.Children.Add(new TextBlock
+                {
+                    Style = (Style)FindResource("Label"),
+                    Text = "▶ NOW RESOLVING",
+                    Foreground = (Brush)FindResource("Accent"),
+                    FontWeight = FontWeights.Bold,
+                    Margin = new Thickness(0, 0, 0, 4),
+                });
+                ImpulsePanel.Children.Add(BuildPlanCard(currId, resolving: true));
+                if (p.Plan.Count > 0)
+                {
+                    ImpulsePanel.Children.Add(new Border
+                    {
+                        Height = 1,
+                        Background = (Brush)FindResource("GateStroke"),
+                        Margin = new Thickness(0, 8, 0, 8),
+                    });
+                    ImpulsePanel.Children.Add(new TextBlock
+                    {
+                        Style = (Style)FindResource("Label"),
+                        Text = $"QUEUED ({p.Plan.Count}) — top resolves next",
+                        Margin = new Thickness(0, 0, 0, 4),
+                    });
+                }
             }
             for (int i = 0; i < p.Plan.Count; i++)
             {
-                ImpulsePanel.Children.Add(BuildPlanCard(p.Plan[i], isCursor: false));
+                ImpulsePanel.Children.Add(BuildPlanCard(p.Plan[i], resolving: false));
             }
             if (p.Plan.Count == 0 && _g.CurrentlyResolvingPlanCardId is null)
                 ImpulsePanel.Children.Add(new TextBlock { Style = (Style)FindResource("Label"), Text = "(empty)" });
@@ -1833,26 +1859,54 @@ public partial class MainWindow : Window
 
     // Larger plan-card for the Phase-4 plan column: shows effect text directly,
     // hover still pops detail. Compact width so the column fits the panel.
-    private FrameworkElement BuildPlanCard(int cardId, bool isCursor)
+    private FrameworkElement BuildPlanCard(int cardId, bool resolving)
     {
         var c = _g.CardsById[cardId];
+        var accent = (Brush)FindResource("Accent");
         var border = new Border
         {
-            Width = 220,
+            Width = resolving ? 260 : 220,
             CornerRadius = new CornerRadius(6),
-            Background = (Brush)FindResource("BgPanel"),
-            BorderBrush = isCursor ? (Brush)FindResource("Accent") : CardBrush(c.Color),
-            BorderThickness = new Thickness(isCursor ? 3 : 2),
-            Padding = new Thickness(8, 6, 8, 6),
+            Background = resolving
+                ? new SolidColorBrush(SystemColor.FromArgb(0x33, 0x5B, 0xC0, 0xFF)) // tinted accent
+                : (Brush)FindResource("BgPanel"),
+            BorderBrush = resolving ? accent : CardBrush(c.Color),
+            BorderThickness = new Thickness(resolving ? 5 : 2),
+            Padding = new Thickness(resolving ? 10 : 8, resolving ? 8 : 6, resolving ? 10 : 8, resolving ? 8 : 6),
             Margin = new Thickness(0, 0, 0, 6),
+            Effect = resolving
+                ? new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = SystemColor.FromRgb(0x5B, 0xC0, 0xFF),
+                    BlurRadius = 14, ShadowDepth = 0, Opacity = 0.9,
+                }
+                : null,
         };
         var stack = new StackPanel();
         var header = new StackPanel { Orientation = Orientation.Horizontal };
+        if (resolving)
+        {
+            header.Children.Add(new TextBlock
+            {
+                Text = "▶ ",
+                Foreground = accent,
+                FontSize = 16, FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
         header.Children.Add(new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(5), Background = CardBrush(c.Color), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
-        header.Children.Add(new TextBlock { Style = (Style)FindResource("Heading"), Foreground = CardBrush(c.Color), Text = c.ActionType.ToString().ToUpperInvariant(), FontSize = 13 });
+        header.Children.Add(new TextBlock { Style = (Style)FindResource("Heading"), Foreground = CardBrush(c.Color), Text = c.ActionType.ToString().ToUpperInvariant(), FontSize = resolving ? 16 : 13, FontWeight = FontWeights.Bold });
         header.Children.Add(new TextBlock { Style = (Style)FindResource("Label"), Text = $"  size {c.Size}   #{c.Id}", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) });
         stack.Children.Add(header);
-        stack.Children.Add(new TextBlock { Style = (Style)FindResource("Body"), Text = c.EffectText, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0), FontSize = 11 });
+        stack.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("Body"),
+            Text = c.EffectText,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 4, 0, 0),
+            FontSize = resolving ? 13 : 11,
+            FontWeight = resolving ? FontWeights.SemiBold : FontWeights.Normal,
+        });
         border.Child = stack;
         HookCardHover(border, c);
         return border;
@@ -1860,18 +1914,44 @@ public partial class MainWindow : Window
 
     private FrameworkElement BuildMiniCard(Card c, bool isCursor)
     {
+        var accent = (Brush)FindResource("Accent");
         var border = new Border
         {
             CornerRadius = new CornerRadius(4),
-            Background = (Brush)FindResource("BgPanel2"),
-            BorderBrush = isCursor ? (Brush)FindResource("Accent") : CardBrush(c.Color),
-            BorderThickness = new Thickness(isCursor ? 2 : 1),
-            Padding = new Thickness(6, 3, 6, 3),
-            Margin = new Thickness(0, 0, 0, 4),
+            Background = isCursor
+                ? new SolidColorBrush(SystemColor.FromArgb(0x33, 0x5B, 0xC0, 0xFF))
+                : (Brush)FindResource("BgPanel2"),
+            BorderBrush = isCursor ? accent : CardBrush(c.Color),
+            BorderThickness = new Thickness(isCursor ? 4 : 1),
+            Padding = new Thickness(isCursor ? 8 : 6, isCursor ? 5 : 3, isCursor ? 8 : 6, isCursor ? 5 : 3),
+            Margin = new Thickness(0, 0, 0, isCursor ? 6 : 4),
+            Effect = isCursor
+                ? new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = SystemColor.FromRgb(0x5B, 0xC0, 0xFF),
+                    BlurRadius = 12, ShadowDepth = 0, Opacity = 0.9,
+                }
+                : null,
         };
         var stack = new StackPanel { Orientation = Orientation.Horizontal };
+        if (isCursor)
+        {
+            stack.Children.Add(new TextBlock
+            {
+                Text = "▶ ",
+                Foreground = accent,
+                FontSize = 14, FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
         stack.Children.Add(new Border { Width = 8, Height = 8, CornerRadius = new CornerRadius(4), Background = CardBrush(c.Color), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
-        stack.Children.Add(new TextBlock { Style = (Style)FindResource("Body"), Text = $"{c.ActionType} {c.Size}" });
+        stack.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("Body"),
+            Text = $"{c.ActionType} {c.Size}",
+            FontWeight = isCursor ? FontWeights.Bold : FontWeights.Normal,
+            FontSize = isCursor ? 13 : 12,
+        });
         stack.Children.Add(new TextBlock { Style = (Style)FindResource("Label"), Text = $"  #{c.Id}", VerticalAlignment = VerticalAlignment.Center });
         border.Child = stack;
         HookCardHover(border, c);
