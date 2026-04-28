@@ -294,16 +294,23 @@ public sealed class GameRunner
             // Walk plan in order, prompting USE/SKIP per card; the entire Plan
             // discards at the end regardless. Each card is removed before its
             // effect runs so that mid-effect references see consistent state.
+            // CurrentlyResolvingPlanCardId is set BEFORE the Use/Skip prompt
+            // (and stays set through Skip) so the UI can show the player which
+            // card they are deciding on — without it, the card briefly
+            // disappears between the Plan list (already removed) and the
+            // resolving slot (not yet set).
             while (p.Plan.Count > 0 && !_g.IsGameOver)
             {
                 int cardId = p.Plan[0];
                 p.Plan.RemoveAt(0);
                 _g.Discard.Add(cardId);
+                _g.CurrentlyResolvingPlanCardId = cardId;
                 var card = _g.CardsById[cardId];
                 var handler = _registry.Resolve(card.EffectFamily);
                 if (handler is null)
                 {
                     _g.Log.Write($"  plan #{cardId} ({card.EffectFamily}) — no handler, auto-skip");
+                    _g.CurrentlyResolvingPlanCardId = null;
                     continue;
                 }
 
@@ -316,6 +323,7 @@ public sealed class GameRunner
                 if (action is PlayerAction.SkipImpulseCard)
                 {
                     _g.Log.Write($"  plan #{cardId} skipped by {_g.ActivePlayer}");
+                    _g.CurrentlyResolvingPlanCardId = null;
                     continue;
                 }
 
@@ -326,7 +334,6 @@ public sealed class GameRunner
                     Source = new EffectSource.PlanCard(cardId),
                 };
                 _g.PendingEffect = ctx;
-                _g.CurrentlyResolvingPlanCardId = cardId;
                 RunEffectToCompletion(handler, ctx);
                 _g.CurrentlyResolvingPlanCardId = null;
                 _g.PendingEffect = null;

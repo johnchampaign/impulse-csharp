@@ -11,7 +11,10 @@
         <SolidColorBrush x:Key="BgPanel2" Color="#1C2540"/>
         <SolidColorBrush x:Key="FgPrimary" Color="#E8ECF5"/>
         <SolidColorBrush x:Key="FgMuted" Color="#7E8AA8"/>
-        <SolidColorBrush x:Key="Accent" Color="#5BC0FF"/>
+        <!-- Accent must NOT match any of the four CardColor values
+             (Red / Blue / Green / Yellow) so map highlights stay
+             visually distinct from sector tints. Warm orange. -->
+        <SolidColorBrush x:Key="Accent" Color="#FFA94A"/>
         <SolidColorBrush x:Key="GateStroke" Color="#3A4768"/>
         <SolidColorBrush x:Key="NodeFill" Color="#1F2A45"/>
         <SolidColorBrush x:Key="NodeStroke" Color="#5079B8"/>
