@@ -258,30 +258,43 @@ public sealed class PolicyController : IPlayerController
             loc is ShipLocation.OnGate gateLoc && coreGates.Contains(gateLoc.Gate)
                 ? -10 : 0;
 
+        // Combo lookahead: an origin whose 1-step neighbour is a face-up
+        // sector card we'd want to activate (Command for chain-moves,
+        // Build for free ships, etc.) is preferable to one that just sits
+        // there. Cap at a single neighbour scan so this stays cheap.
+        int BestComboFromOrigin(ShipLocation origin)
+        {
+            int best = 0;
+            foreach (var neighbour in Movement.Neighbors(g.Map, origin))
+            {
+                int u = ActivationUtility(g, origin, neighbour);
+                if (u > best) best = u;
+            }
+            return best;
+        }
+
         if (Policy == AiPolicy.Warrior)
         {
             return BestRandom(f.LegalLocations,
-                loc => EnemyProximityScore(g, loc) + CoreGateStickiness(loc));
+                loc => EnemyProximityScore(g, loc) + CoreGateStickiness(loc) + BestComboFromOrigin(loc));
         }
         if (Policy == AiPolicy.CoreRush)
         {
             return BestRandom(f.LegalLocations,
-                loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc));
+                loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc) + BestComboFromOrigin(loc));
         }
         if (Policy == AiPolicy.Munchkin)
         {
             if (LeaderId(g) is { } leader)
                 return BestRandom(f.LegalLocations,
-                    loc => LeaderProximityScore(g, leader, loc) + CoreGateStickiness(loc));
-            // No clear leader (e.g. 5+ players): fall back to core-pursuit
-            // so Munchkin doesn't degrade to random in big games.
+                    loc => LeaderProximityScore(g, leader, loc) + CoreGateStickiness(loc) + BestComboFromOrigin(loc));
             return BestRandom(f.LegalLocations,
-                loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc));
+                loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc) + BestComboFromOrigin(loc));
         }
         if (Policy == AiPolicy.Greedy)
         {
             return BestRandom(f.LegalLocations,
-                loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc));
+                loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc) + BestComboFromOrigin(loc));
         }
         return f.LegalLocations[_rng.Next(f.LegalLocations.Count)];
     }
@@ -305,38 +318,38 @@ public sealed class PolicyController : IPlayerController
 
     private IReadOnlyList<ShipLocation> ChoosePath(GameState g, DeclareMoveRequest m)
     {
-        // Universal battle-safety adjustment: every policy avoids paths
-        // that force us into an unwinnable fight. The origin determines
-        // our cruiser count; the path's last location is checked for
-        // enemy cruisers (where a battle would actually happen).
+        // Universal: avoid losing battles, and prefer destinations whose
+        // face-up card we'd want to chain-activate via the transport
+        // arrival (Command-card combos, Build-on-arrival, etc.).
         int Safety(IReadOnlyList<ShipLocation> p) => BattleSafetyScore(g, m.Origin, p[^1]);
+        int Combo(IReadOnlyList<ShipLocation> p) => ActivationUtility(g, m.Origin, p[^1]);
 
         if (Policy == AiPolicy.CoreRush)
         {
             return BestRandom(m.LegalPaths,
-                path => -DistanceToCore(g, path[^1]) + Safety(path));
+                path => -DistanceToCore(g, path[^1]) + Safety(path) + Combo(path));
         }
         if (Policy == AiPolicy.Warrior)
         {
-            // Warrior wants engagement, but only winnable engagement.
             return BestRandom(m.LegalPaths,
-                path => EnemyProximityScore(g, path[^1]) + Safety(path));
+                path => EnemyProximityScore(g, path[^1]) + Safety(path) + Combo(path));
         }
         if (Policy == AiPolicy.Munchkin)
         {
             if (LeaderId(g) is { } leader)
                 return BestRandom(m.LegalPaths,
-                    path => LeaderProximityScore(g, leader, path[^1]) + Safety(path));
+                    path => LeaderProximityScore(g, leader, path[^1]) + Safety(path) + Combo(path));
             return BestRandom(m.LegalPaths,
-                path => -DistanceToCore(g, path[^1]) + Safety(path));
+                path => -DistanceToCore(g, path[^1]) + Safety(path) + Combo(path));
         }
         if (Policy == AiPolicy.Greedy)
         {
             return BestRandom(m.LegalPaths,
-                path => -DistanceToCore(g, path[^1]) + Safety(path));
+                path => -DistanceToCore(g, path[^1]) + Safety(path) + Combo(path));
         }
-        // Refine, defaults: avoid losing battles; otherwise pick at random.
-        return BestRandom(m.LegalPaths, path => Safety(path));
+        // Refine, defaults: avoid losing battles, prefer combo destinations,
+        // otherwise random.
+        return BestRandom(m.LegalPaths, path => Safety(path) + Combo(path));
     }
 
     // Score by proximity to the leader's ships — higher score = closer to
@@ -352,6 +365,45 @@ public sealed class PolicyController : IPlayerController
             if (Adjacent(g, loc, es.Location)) score = Math.Max(score, 1);
         }
         return score;
+    }
+
+    // Activation utility of a destination: when a transport path ends on
+    // a face-up sector card (other than the origin), arriving activates
+    // that card with the just-moved transports as bonus matching gems.
+    // This enables combos that aren't obvious from card-type bias alone:
+    //
+    //   home → Command-card sector (activates Command, gives an EXTRA
+    //          fleet command) → use that command to push the transport
+    //          ONWARD to the Sector Core in the same turn.
+    //
+    //   home → Build-card sector (activates Build, lets us build a ship
+    //          while we're here, cheaper than placing the Build card
+    //          ourselves). And so on for Mine / Refine / Trade where we
+    //          have applicable hand or mineral state.
+    //
+    // Returns a positive bonus for ending a transport path on a sector
+    // whose face-up card we'd actually want to use right now, scaled by
+    // the card's expected utility (re-using ScoreCard, minus a baseline
+    // so neutral cards don't bias). Returns 0 for cruiser-end-on-gate
+    // paths, exploration / face-down nodes, and the origin node itself.
+    private int ActivationUtility(GameState g, ShipLocation origin, ShipLocation finalLoc)
+    {
+        if (finalLoc is not ShipLocation.OnNode endNode) return 0;
+        if (origin is ShipLocation.OnNode oN && oN.Node == endNode.Node) return 0;
+        if (!g.NodeCards.TryGetValue(endNode.Node, out var ncs)) return 0;
+        if (ncs is NodeCardState.SectorCore)
+        {
+            // SC is already heavily favoured by Distance-to-core in policies
+            // that target it. Light bump for the ones that don't, so they
+            // still notice it as a high-EV ending.
+            return 4;
+        }
+        if (ncs is not NodeCardState.FaceUp fu) return 0;
+        int raw = ScoreCard(g, g.CardsById[fu.CardId]);
+        // ScoreCard ≈ 1..7 typical. Subtract baseline so a "meh" card
+        // doesn't sway path choice; keeps the bonus focused on cards
+        // whose effect we'd genuinely want to chain.
+        return Math.Max(0, raw - 3);
     }
 
     // Battle-likelihood score for a path. Positive when the path ends in
