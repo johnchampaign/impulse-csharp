@@ -5,7 +5,21 @@ using Impulse.Core.Players;
 
 namespace Impulse.Core.Controllers;
 
-public enum AiPolicy { Greedy, Warrior, CoreRush, Munchkin, Refine }
+public enum AiPolicy
+{
+    Greedy,
+    Warrior,
+    CoreRush,
+    Munchkin,
+    Refine,
+    // Wraps a baseline policy with 1-ply lookahead: clones the GameState
+    // for each candidate top-level action, simulates a few turns forward
+    // with all seats running the baseline, scores the resulting position
+    // by prestige delta + material. ~10x slower than baseline policies
+    // in tournament; use --policies Lookahead,... explicitly to opt in.
+    // Excluded from the default random policy pool.
+    Lookahead,
+}
 
 // Scored AI: each policy biases legal-action selection via a per-action
 // Score function. Choice prompts use lightweight heuristics that fall back

@@ -1,5 +1,6 @@
 using Impulse.Core.Effects;
 using Impulse.Core.Engine;
+using Impulse.Core.Map;
 using Impulse.Core.Players;
 
 namespace Impulse.Core.Controllers;
@@ -27,12 +28,15 @@ public sealed class LookaheadController : IPlayerController
 
     public PlayerId Seat { get; }
 
+    private readonly int _samplesPerAction;
+
     public LookaheadController(
         PlayerId seat,
         int seed,
         AiPolicy myPolicy,
         AiPolicy opponentPolicy = AiPolicy.Greedy,
-        int simTurns = 4)
+        int simTurns = 4,
+        int samplesPerAction = 5)
     {
         Seat = seat;
         _seed = seed;
@@ -40,26 +44,41 @@ public sealed class LookaheadController : IPlayerController
         _selfPolicy = new PolicyController(seat, seed, myPolicy);
         _opponentPolicy = opponentPolicy;
         _simTurns = simTurns;
+        _samplesPerAction = samplesPerAction;
     }
 
     public PlayerAction PickAction(GameState g, IReadOnlyList<PlayerAction> legal)
     {
         if (legal.Count == 1) return legal[0];
 
-        // Clone + simulate every candidate. Pick the action with the highest
-        // resulting evaluation score (random tiebreak among equals).
-        int bestScore = int.MinValue;
+        // GameRunner.StepOneTurn always restarts at Phase 1; it has no
+        // "resume from current phase" capability. So we can only safely
+        // simulate when the current state IS at the start of a turn —
+        // i.e. the engine is about to call Phase1 (PlaceImpulse). Other
+        // decisions (Use vs Skip impulse card, Use vs Skip tech, Use vs
+        // Skip plan) happen mid-turn; cloning and stepping there would
+        // re-run phases instead of continuing them. Defer those to the
+        // inner heuristic policy.
+        if (legal[0] is not PlayerAction.PlaceImpulse)
+        {
+            return _selfPolicy.PickAction(g, legal);
+        }
+
+        double bestMean = double.MinValue;
         var bestActions = new List<PlayerAction>();
         foreach (var action in legal)
         {
-            int score = SimulateScore(g, action);
-            if (score > bestScore)
+            double sum = 0;
+            for (int s = 0; s < _samplesPerAction; s++)
+                sum += SimulateScore(g, action, sampleSeed: s);
+            double mean = sum / _samplesPerAction;
+            if (mean > bestMean + 0.5)
             {
-                bestScore = score;
+                bestMean = mean;
                 bestActions.Clear();
                 bestActions.Add(action);
             }
-            else if (score == bestScore)
+            else if (Math.Abs(mean - bestMean) <= 0.5)
             {
                 bestActions.Add(action);
             }
@@ -67,7 +86,7 @@ public sealed class LookaheadController : IPlayerController
         return bestActions[_rng.Next(bestActions.Count)];
     }
 
-    private int SimulateScore(GameState g, PlayerAction firstAction)
+    private int SimulateScore(GameState g, PlayerAction firstAction, int sampleSeed)
     {
         var clone = g.Clone();
         var registry = SharedRegistry.Get();
@@ -79,7 +98,8 @@ public sealed class LookaheadController : IPlayerController
         var controllers = new List<IPlayerController>(clone.Players.Count);
         foreach (var p in clone.Players)
         {
-            int subSeed = _seed * 1009 + p.Id.Value;
+            // Per-sample-seed sub-seed so different samples diverge.
+            int subSeed = _seed * 1009 + p.Id.Value * 17 + sampleSeed * 7919;
             if (p.Id == Seat)
             {
                 var inner = new PolicyController(p.Id, subSeed, _opponentPolicy);
@@ -98,9 +118,12 @@ public sealed class LookaheadController : IPlayerController
     }
 
     // Position evaluation for the simulating seat. Pure prestige delta is
-    // the dominant signal; small material bonuses break ties between
-    // prestige-equal positions and discourage the AI from sacrificing too
-    // many ships for a marginal gain.
+    // dominant when the simulator has had time to actually resolve
+    // scoring events. For shorter sims (where most decisions don't
+    // immediately change prestige), positional terms — especially
+    // cruisers on Sector Core gates, which earn +1 prestige per turn for
+    // every turn they remain — capture the value the simulator will see
+    // *next* turn even if the current turn ended without scoring.
     private int ScorePosition(GameState g)
     {
         int myPrestige = g.Player(Seat).Prestige;
@@ -118,10 +141,20 @@ public sealed class LookaheadController : IPlayerController
             .DefaultIfEmpty(0)
             .Max();
 
-        // Heuristic weights: prestige is by far the biggest term so the
-        // simulator strongly prefers actually scoring points; minor terms
-        // for ships, hand, minerals to break ties.
+        // Future-prestige proxies. Each cruiser on a SC gate is roughly
+        // worth +N prestige over the next N turns of patrol scoring; we
+        // weight as +20 so it competes with the prestige term itself.
+        var coreGates = g.Map.AdjacencyByNode[g.Map.SectorCoreNodeId]
+            .Select(gate => gate.Id).ToHashSet();
+        int myCruisersOnCoreGates = g.ShipPlacements.Count(sp =>
+            sp.Owner == Seat &&
+            sp.Location is ShipLocation.OnGate og && coreGates.Contains(og.Gate));
+        int oppCruisersOnCoreGates = g.ShipPlacements.Count(sp =>
+            sp.Owner != Seat &&
+            sp.Location is ShipLocation.OnGate og && coreGates.Contains(og.Gate));
+
         return 100 * prestigeDelta
+             + 20 * (myCruisersOnCoreGates - oppCruisersOnCoreGates)
              + 5 * (myShips - maxOppShips)
              + g.Player(Seat).Hand.Count
              + g.Player(Seat).Minerals.Count;

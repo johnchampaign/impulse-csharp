@@ -58,7 +58,12 @@ public static class HeadlessTournament
     {
         if (seatPolicies is not null && seatPolicies.Count != playerCount)
             throw new ArgumentException($"seatPolicies length {seatPolicies.Count} != playerCount {playerCount}");
-        var pool = policyPool ?? Enum.GetValues<AiPolicy>();
+        // Default pool: all policies EXCEPT Lookahead, which is much
+        // slower and is meant to be opted in explicitly via seatPolicies
+        // or an explicit policyPool that includes it.
+        var pool = policyPool ?? Enum.GetValues<AiPolicy>()
+            .Where(p => p != AiPolicy.Lookahead)
+            .ToArray();
         var sampler = new Random(baseSeed ^ 0x5A5A5A5A);
 
         var wins = Enum.GetValues<AiPolicy>().ToDictionary(p => p, _ => 0);
@@ -90,6 +95,23 @@ public static class HeadlessTournament
         return new Summary(games, playerCount, wins, avgPrestige, appearances);
     }
 
+    // Build a controller for a seat. AiPolicy.Lookahead wraps a baseline
+    // (Greedy) policy with 1-ply simulation; all other policies use the
+    // direct PolicyController.
+    public static IPlayerController MakeController(PlayerId seat, int seed, AiPolicy policy)
+    {
+        if (policy == AiPolicy.Lookahead)
+        {
+            return new LookaheadController(
+                seat, seed,
+                myPolicy: AiPolicy.Greedy,
+                opponentPolicy: AiPolicy.Greedy,
+                simTurns: 4,
+                samplesPerAction: 5);
+        }
+        return new PolicyController(seat, seed, policy);
+    }
+
     // Run a single game from a fresh setup, all seats AI, return the result.
     public static GameResult RunOne(int seed, int playerCount, IReadOnlyList<AiPolicy> seatPolicies, int maxTurns = 200)
     {
@@ -113,8 +135,8 @@ public static class HeadlessTournament
         for (int i = 0; i < playerCount; i++)
         {
             var seatId = g.Players[i].Id;
-            // Per-seat sub-seed so each policy's RNG is reproducible.
-            controllers.Add(new PolicyController(seatId, seed: seed * 31 + i, policy: seatPolicies[i]));
+            int subSeed = seed * 31 + i;
+            controllers.Add(MakeController(seatId, subSeed, seatPolicies[i]));
         }
         var runner = new GameRunner(g, registry, controllers);
         runner.RunUntilDone(maxTurns: maxTurns);
