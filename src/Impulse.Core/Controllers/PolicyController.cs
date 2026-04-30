@@ -365,19 +365,27 @@ public sealed class PolicyController : IPlayerController
     {
         if (h.LegalCardIds.Count == 0)
             return h.AllowNone ? null : 0;
-        // Exploration: when forced to place a card from hand face-up on a
-        // sector, don't burn a high-EV card. Pick the card with the LOWEST
-        // ScoreCard value (i.e. the worst card we could play normally) —
-        // it'll still create a sector everyone can use, but we lose the
-        // least by sacrificing it.
+
+        // Exploration: when placing a card face-up on a newly-explored
+        // sector, the right card depends on who can reach it most easily.
+        // If MY home is closer to the sector than any opponent's home,
+        // I'll activate it the most → place my BEST card. If an opponent
+        // is closer, they'll place a good card there if I don't, so place
+        // my WORST card to deny them the slot.
         bool isExploration = h.Prompt.StartsWith("Exploring", StringComparison.Ordinal);
         if (isExploration)
         {
-            return h.LegalCardIds
-                .OrderBy(id => ScoreCard(g, g.CardsById[id]))
-                .ThenBy(_ => _rng.Next())
-                .First();
+            bool placeBest = ExploringSectorMineToReach(g, h.Prompt) ?? false;
+            var ordered = placeBest
+                ? h.LegalCardIds
+                    .OrderByDescending(id => ScoreCard(g, g.CardsById[id]))
+                    .ThenBy(_ => _rng.Next())
+                : h.LegalCardIds
+                    .OrderBy(id => ScoreCard(g, g.CardsById[id]))
+                    .ThenBy(_ => _rng.Next());
+            return ordered.First();
         }
+
         // Refine doesn't want to discard mineral-friendly cards (size 1's
         // would be mined, larger trades give points). Prefer largest.
         if (Policy == AiPolicy.Refine)
@@ -386,6 +394,36 @@ public sealed class PolicyController : IPlayerController
             return ordered[0];
         }
         return h.LegalCardIds[_rng.Next(h.LegalCardIds.Count)];
+    }
+
+    // Parse the explored node id from the prompt ("Exploring N5: …") and
+    // compare hex distance from that node to my home vs the closest
+    // opponent's home. Returns true if the sector is at least as close
+    // to me as to any opponent (place best card), false if an opponent
+    // is closer (place worst), null if parsing fails.
+    private bool? ExploringSectorMineToReach(GameState g, string prompt)
+    {
+        const string prefix = "Exploring N";
+        if (!prompt.StartsWith(prefix, StringComparison.Ordinal)) return null;
+        int colon = prompt.IndexOf(':');
+        if (colon <= prefix.Length) return null;
+        if (!int.TryParse(prompt.AsSpan(prefix.Length, colon - prefix.Length), out int nodeVal))
+            return null;
+
+        var explored = g.Map.Node(new NodeId(nodeVal));
+        if (!g.Map.HomeNodeIds.TryGetValue(Seat, out var myHomeId)) return null;
+        var myHome = g.Map.Node(myHomeId);
+        int myDist = AxialDistance(explored.AxialQ, explored.AxialR, myHome.AxialQ, myHome.AxialR);
+        int closestOppDist = int.MaxValue;
+        foreach (var opp in g.Players)
+        {
+            if (opp.Id == Seat) continue;
+            if (!g.Map.HomeNodeIds.TryGetValue(opp.Id, out var oppHomeId)) continue;
+            var oppHome = g.Map.Node(oppHomeId);
+            int d = AxialDistance(explored.AxialQ, explored.AxialR, oppHome.AxialQ, oppHome.AxialR);
+            if (d < closestOppDist) closestOppDist = d;
+        }
+        return myDist <= closestOppDist;
     }
 
     private ShipLocation ChoosePlacement(GameState g, SelectShipPlacementRequest sp)
