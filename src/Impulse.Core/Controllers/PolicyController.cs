@@ -160,6 +160,12 @@ public sealed class PolicyController : IPlayerController
                 baseScore += Math.Min(biggestFleet, 3);
                 if (meTrails && (Policy == AiPolicy.Munchkin || Policy == AiPolicy.Warrior))
                     baseScore += 2;
+                // Player-count modulation: at low counts each opponent's
+                // ship loss is a much bigger fraction of total opposition,
+                // so sabotage is more impactful. At 6p the marginal damage
+                // to one opponent matters less.
+                if (g.Players.Count <= 2) baseScore += 2;
+                else if (g.Players.Count >= 5) baseScore -= 1;
                 break;
             case CardActionType.Build:
                 // Build needs ships available.
@@ -183,8 +189,13 @@ public sealed class PolicyController : IPlayerController
         g.ShipPlacements.Any(sp => sp.Owner != Seat);
 
     // The current leader by prestige (excluding self), or null if all tied.
+    // Returns null at 5+ players: the leader rotates often enough that
+    // fixed targeting underperforms simple Sector Core scoring. (Bench
+    // shows Munchkin's win rate dropping from 39% at 2p to 13% at 6p
+    // when always pursuing a leader.)
     private PlayerId? LeaderId(GameState g)
     {
+        if (g.Players.Count >= 5) return null;
         var others = g.Players.Where(p => p.Id != Seat).ToList();
         if (others.Count == 0) return null;
         int max = others.Max(p => p.Prestige);
@@ -257,10 +268,15 @@ public sealed class PolicyController : IPlayerController
             return BestRandom(f.LegalLocations,
                 loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc));
         }
-        if (Policy == AiPolicy.Munchkin && LeaderId(g) is { } leader)
+        if (Policy == AiPolicy.Munchkin)
         {
+            if (LeaderId(g) is { } leader)
+                return BestRandom(f.LegalLocations,
+                    loc => LeaderProximityScore(g, leader, loc) + CoreGateStickiness(loc));
+            // No clear leader (e.g. 5+ players): fall back to core-pursuit
+            // so Munchkin doesn't degrade to random in big games.
             return BestRandom(f.LegalLocations,
-                loc => LeaderProximityScore(g, leader, loc) + CoreGateStickiness(loc));
+                loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc));
         }
         if (Policy == AiPolicy.Greedy)
         {
@@ -306,10 +322,13 @@ public sealed class PolicyController : IPlayerController
             return BestRandom(m.LegalPaths,
                 path => EnemyProximityScore(g, path[^1]) + Safety(path));
         }
-        if (Policy == AiPolicy.Munchkin && LeaderId(g) is { } leader)
+        if (Policy == AiPolicy.Munchkin)
         {
+            if (LeaderId(g) is { } leader)
+                return BestRandom(m.LegalPaths,
+                    path => LeaderProximityScore(g, leader, path[^1]) + Safety(path));
             return BestRandom(m.LegalPaths,
-                path => LeaderProximityScore(g, leader, path[^1]) + Safety(path));
+                path => -DistanceToCore(g, path[^1]) + Safety(path));
         }
         if (Policy == AiPolicy.Greedy)
         {
@@ -340,6 +359,11 @@ public sealed class PolicyController : IPlayerController
     // path forces us into a fight we'll likely lose (defender wins ties,
     // and losing a battle costs us all our cruisers + scores prestige for
     // the winner). Returns 0 when no contact is anticipated.
+    //
+    // Magnitudes scale with player count: at 6p a battle loss is more
+    // damaging because more opponents bank points while you rebuild
+    // material. At 2p a winnable battle pays a larger share of the
+    // win condition.
     private int BattleSafetyScore(GameState g, ShipLocation origin, ShipLocation finalLoc)
     {
         if (origin is not ShipLocation.OnGate fromGate) return 0;
@@ -348,17 +372,19 @@ public sealed class PolicyController : IPlayerController
         int myCruisers = g.ShipPlacements.Count(sp =>
             sp.Owner == Seat &&
             sp.Location is ShipLocation.OnGate og && og.Gate == fromGate.Gate);
-        // Enemy cruiser count at the destination gate.
         int enemyAtDest = g.ShipPlacements.Count(sp =>
             sp.Owner != Seat &&
             sp.Location is ShipLocation.OnGate og && og.Gate == toGate.Gate);
-        if (enemyAtDest == 0) return 0; // no battle anticipated here
+        if (enemyAtDest == 0) return 0;
 
-        // Cruiser-icon draws favour whoever has more cruisers. Defender
-        // also wins ties. Treat winnable as "strict majority of cruisers".
-        if (myCruisers > enemyAtDest) return 6;          // winnable
-        if (myCruisers == enemyAtDest) return -8;        // tie → defender wins
-        return -12;                                      // outnumbered, likely rout
+        int n = g.Players.Count;
+        int winBonus = n <= 2 ? 8 : n <= 4 ? 6 : 4;
+        int tiePenalty = n <= 2 ? -8 : n <= 4 ? -10 : -14;
+        int routPenalty = n <= 2 ? -12 : n <= 4 ? -14 : -18;
+
+        if (myCruisers > enemyAtDest) return winBonus;
+        if (myCruisers == enemyAtDest) return tiePenalty;
+        return routPenalty;
     }
 
     private int? ChooseHandCard(GameState g, SelectHandCardRequest h)
