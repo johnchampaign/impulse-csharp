@@ -37,7 +37,7 @@ public sealed class PolicyController : IPlayerController
         switch (a)
         {
             case PlayerAction.PlaceImpulse pi:
-                return ScoreCard(g.CardsById[pi.CardIdFromHand]);
+                return ScoreCard(g, g.CardsById[pi.CardIdFromHand]);
             case PlayerAction.UseImpulseCard:
                 return 2;        // generally do things rather than skip
             case PlayerAction.SkipImpulseCard:
@@ -55,38 +55,127 @@ public sealed class PolicyController : IPlayerController
         }
     }
 
-    // The card-type bias is the heart of each policy.
-    private int ScoreCard(Card c) => Policy switch
+    // State-aware card scoring. Each policy applies a base bias by
+    // CardActionType, then adjusts up or down based on whether the
+    // action is actually useful in the current game state — e.g. a
+    // Refine card is worthless without minerals, a Mine card without
+    // matching size-1 hand cards, a Sabotage without a target.
+    private int ScoreCard(GameState g, Card c)
     {
-        AiPolicy.Greedy => 1, // random
-        AiPolicy.Warrior => c.ActionType switch
+        var me = g.Player(Seat);
+        bool meTrails = LeaderId(g) is { } leader && leader != Seat;
+
+        // Per-policy base bias.
+        int baseScore = Policy switch
         {
-            CardActionType.Sabotage => 6,
-            CardActionType.Command => 4,
-            CardActionType.Build => 3,
+            // Greedy: actually greedy — prefer immediate-prestige actions,
+            // ranked by typical points-per-use.
+            AiPolicy.Greedy => c.ActionType switch
+            {
+                CardActionType.Trade => 6,    // +1 per icon, easy points
+                CardActionType.Refine => 6,   // direct prestige
+                CardActionType.Sabotage => 5, // +1 per ship destroyed
+                CardActionType.Command => 4,  // patrols core gates
+                CardActionType.Build => 4,    // adds combat material
+                CardActionType.Mine => 3,     // sets up future Refine
+                CardActionType.Execute => 3,
+                CardActionType.Research => 2,
+                CardActionType.Plan => 2,     // delayed prestige
+                CardActionType.Draw => 1,     // weakest card type
+                _ => 1,
+            },
+            AiPolicy.Warrior => c.ActionType switch
+            {
+                CardActionType.Sabotage => 7,
+                CardActionType.Command => 5,
+                CardActionType.Build => 4,    // build cruisers for war
+                CardActionType.Trade => 2,
+                CardActionType.Refine => 2,
+                _ => 1,
+            },
+            AiPolicy.CoreRush => c.ActionType switch
+            {
+                CardActionType.Command => 7,
+                CardActionType.Build => 5,
+                CardActionType.Trade => 2,
+                CardActionType.Refine => 2,
+                _ => 1,
+            },
+            AiPolicy.Munchkin => c.ActionType switch
+            {
+                CardActionType.Sabotage => 7,
+                CardActionType.Command => 4,  // for attacking leader
+                CardActionType.Build => 3,
+                _ => 1,
+            },
+            AiPolicy.Refine => c.ActionType switch
+            {
+                CardActionType.Mine => 7,
+                CardActionType.Refine => 7,
+                CardActionType.Trade => 4,
+                CardActionType.Build => 2,
+                _ => 1,
+            },
             _ => 1,
-        },
-        AiPolicy.CoreRush => c.ActionType switch
+        };
+
+        // State-aware adjustments — penalise cards that won't fire usefully
+        // in the current game state.
+        switch (c.ActionType)
         {
-            CardActionType.Command => 6,
-            CardActionType.Build => 4,
-            _ => 1,
-        },
-        AiPolicy.Munchkin => c.ActionType switch
-        {
-            CardActionType.Sabotage => 6,
-            CardActionType.Command => 3,
-            _ => 1,
-        },
-        AiPolicy.Refine => c.ActionType switch
-        {
-            CardActionType.Mine => 6,
-            CardActionType.Refine => 5,
-            CardActionType.Trade => 3,
-            _ => 1,
-        },
-        _ => 1,
-    };
+            case CardActionType.Refine:
+                // Worthless without minerals.
+                if (me.Minerals.Count == 0) return 1;
+                // Per-gem cards reward higher-size minerals.
+                int bestMineralSize = me.Minerals.Max(id => g.CardsById[id].Size);
+                baseScore += bestMineralSize - 1;
+                break;
+            case CardActionType.Mine:
+                // Mine cards usually filter on size-1 hand cards.
+                int sizeOnes = me.Hand.Count(id => g.CardsById[id].Size == 1);
+                if (sizeOnes == 0) baseScore -= 2;
+                break;
+            case CardActionType.Trade:
+                // Trade scores by icons; emptier hand = less to trade.
+                if (me.Hand.Count <= 1) baseScore -= 2;
+                break;
+            case CardActionType.Sabotage:
+                // No legal target = no score.
+                if (!HasAnyEnemyShip(g)) return 1;
+                // Munchkins / Warriors love sabotage when trailing.
+                if (meTrails && (Policy == AiPolicy.Munchkin || Policy == AiPolicy.Warrior))
+                    baseScore += 2;
+                break;
+            case CardActionType.Build:
+                // Build needs ships available.
+                if (me.ShipsAvailable <= 0) return 1;
+                break;
+            case CardActionType.Command:
+                // Command needs ships on the board to move.
+                if (g.ShipPlacements.Count(sp => sp.Owner == Seat) == 0) return 1;
+                break;
+            case CardActionType.Plan:
+                // Late-game (somebody is close to winning) prefer immediate
+                // prestige over deferred.
+                if (g.Players.Any(p => p.Prestige >= Scoring.WinThreshold - 4))
+                    baseScore -= 2;
+                break;
+        }
+        return Math.Max(1, baseScore);
+    }
+
+    private bool HasAnyEnemyShip(GameState g) =>
+        g.ShipPlacements.Any(sp => sp.Owner != Seat);
+
+    // The current leader by prestige (excluding self), or null if all tied.
+    private PlayerId? LeaderId(GameState g)
+    {
+        var others = g.Players.Where(p => p.Id != Seat).ToList();
+        if (others.Count == 0) return null;
+        int max = others.Max(p => p.Prestige);
+        var top = others.Where(p => p.Prestige == max).ToList();
+        return top.Count == 1 ? top[0].Id : null;
+    }
 
     public void AnswerChoice(GameState g, ChoiceRequest request)
     {
@@ -145,6 +234,16 @@ public sealed class PolicyController : IPlayerController
         {
             return BestRandom(f.LegalLocations, loc => -DistanceToCore(g, loc));
         }
+        // Munchkin: prefer fleets near the leader (to attack/sabotage).
+        if (Policy == AiPolicy.Munchkin && LeaderId(g) is { } leader)
+        {
+            return BestRandom(f.LegalLocations, loc => LeaderProximityScore(g, leader, loc));
+        }
+        // Greedy: bias toward Sector Core too (it's the highest-EV move).
+        if (Policy == AiPolicy.Greedy)
+        {
+            return BestRandom(f.LegalLocations, loc => -DistanceToCore(g, loc));
+        }
         return f.LegalLocations[_rng.Next(f.LegalLocations.Count)];
     }
 
@@ -158,7 +257,31 @@ public sealed class PolicyController : IPlayerController
         {
             return BestRandom(m.LegalPaths, path => EnemyProximityScore(g, path[^1]));
         }
+        if (Policy == AiPolicy.Munchkin && LeaderId(g) is { } leader)
+        {
+            return BestRandom(m.LegalPaths, path => LeaderProximityScore(g, leader, path[^1]));
+        }
+        // Greedy: prefer paths ending closer to Sector Core for ongoing scoring.
+        if (Policy == AiPolicy.Greedy)
+        {
+            return BestRandom(m.LegalPaths, path => -DistanceToCore(g, path[^1]));
+        }
         return m.LegalPaths[_rng.Next(m.LegalPaths.Count)];
+    }
+
+    // Score by proximity to the leader's ships — higher score = closer to
+    // a potential battle/sabotage target.
+    private static int LeaderProximityScore(GameState g, PlayerId leader, ShipLocation loc)
+    {
+        var leaderShips = g.ShipPlacements.Where(sp => sp.Owner == leader).ToList();
+        if (leaderShips.Count == 0) return 0;
+        int score = 0;
+        foreach (var es in leaderShips)
+        {
+            if (Mechanics.LocationsEqual(es.Location, loc)) { score = Math.Max(score, 2); continue; }
+            if (Adjacent(g, loc, es.Location)) score = Math.Max(score, 1);
+        }
+        return score;
     }
 
     private int? ChooseHandCard(GameState g, SelectHandCardRequest h)

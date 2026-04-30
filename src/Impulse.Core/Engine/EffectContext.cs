@@ -26,4 +26,11 @@ public sealed class EffectContext
     // For sector-map activation: number of transports that JUST moved onto
     // the activated card. Each counts as a +1 matching gem for boost.
     public int TransportBonusGems { get; init; } = 0;
+    // How many sector-map activations are stacked above this effect.
+    // 0 for the outermost effect (e.g. an Impulse card or Plan card),
+    // increments by 1 each time an activation forwards to a sub-effect.
+    // Capped (see CommandHandler) to prevent unbounded chains where
+    // transports landing on a Command card move more transports onto
+    // another Command card, repeating.
+    public int ActivationDepth { get; init; } = 0;
 }

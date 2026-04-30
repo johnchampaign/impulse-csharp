@@ -74,27 +74,8 @@ public class HeadlessTournamentTests
         Assert.True(summary.Wins.Values.Sum() > 0, "at least one game decided a winner");
     }
 
-    // Manual bench. Skipped by default; remove the Skip attribute and run
-    // with:
-    //   dotnet test --filter Bench_print_baseline_winrates
-    // Prints the win-rate matrix across all five policies. Use this to
-    // quantify the impact of any AI change.
-    //
-    // Baseline (200 games, 4 players, baseSeed=9999, maxTurns=200):
-    //   CoreRush  79 wins (50.0%)  avg prestige 16.2
-    //   Greedy    36 wins (18.7%)  avg prestige 12.3
-    //   Warrior   34 wins (20.4%)  avg prestige 13.0
-    //   Munchkin  26 wins (19.3%)  avg prestige 12.9
-    //   Refine    25 wins (17.0%)  avg prestige 12.7
-    [Fact(Skip = "manual bench — unskip when comparing AI changes")]
-    public void Bench_print_baseline_winrates()
-    {
-        var summary = HeadlessTournament.Run(
-            games: 200,
-            playerCount: 4,
-            policyPool: Enum.GetValues<AiPolicy>(),
-            baseSeed: 9999,
-            maxTurns: 200);
-        Console.WriteLine(summary.ToString());
-    }
+    // For larger benchmarks, use the dedicated console project:
+    //   dotnet run --project src/Impulse.Bench
+    //   dotnet run --project src/Impulse.Bench -- --games 500
+    //   dotnet run --project src/Impulse.Bench -- --policies CoreRush,Greedy,Greedy,Greedy
 }

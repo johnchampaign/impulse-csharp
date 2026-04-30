@@ -49,9 +49,18 @@ src/
   Impulse.Core/       Engine. No UI dependencies.
   Impulse.Wpf/        WPF shell.
   Impulse.Tests/      xUnit tests.
+  Impulse.Bench/      Headless AI tournament harness.
 docs/
   core-model.md       Card, Race, Map, Sector Core, scoring.
   engine.md           Turn loop, EffectContext, registry, codec, rollout.
+```
+
+For AI benchmarking:
+
+```
+dotnet run --project src/Impulse.Bench
+dotnet run --project src/Impulse.Bench -- --games 500
+dotnet run --project src/Impulse.Bench -- --policies CoreRush,Greedy,Greedy,Greedy
 ```
 
 `CLAUDE.md` at the repo root documents the project's conventions, the

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Impulse.Bench/Impulse.Bench.csproj" />
     <Project Path="src/Impulse.Core/Impulse.Core.csproj" />
     <Project Path="src/Impulse.Tests/Impulse.Tests.csproj" />
     <Project Path="src/Impulse.Wpf/Impulse.Wpf.csproj" />

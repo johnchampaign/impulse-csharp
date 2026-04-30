@@ -371,12 +371,22 @@ public sealed class CommandHandler : IEffectHandler
             g.Log.Write($"  → activate #{fu.CardId} ({card.EffectFamily}): no handler; skip");
             return CompleteFleet(g, ctx, st);
         }
+        // Cap activation chain depth so a series of transports landing on
+        // Command cards (each moving more transports onto more Command
+        // cards) can't recurse without bound.
+        const int MaxActivationDepth = 4;
+        if (ctx.ActivationDepth >= MaxActivationDepth)
+        {
+            g.Log.Write($"  → activate #{fu.CardId}: max chain depth ({MaxActivationDepth}) reached; skip");
+            return CompleteFleet(g, ctx, st);
+        }
         g.Log.Write($"  → activating #{fu.CardId} on {endNode.Node} (+{st.ChosenCount} bonus gems from arriving transports)");
         var subCtx = new EffectContext
         {
             ActivatingPlayer = ctx.ActivatingPlayer,
             Source = new EffectSource.MapActivation(endNode.Node, fu.CardId),
             TransportBonusGems = st.ChosenCount,
+            ActivationDepth = ctx.ActivationDepth + 1,
         };
         st.ActivationHandler = sub;
         st.ActivationCtx = subCtx;

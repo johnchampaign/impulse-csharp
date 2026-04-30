@@ -424,6 +424,7 @@ public sealed class BasicCommonTechHandler : IEffectHandler
             ActivatingPlayer = ctx.ActivatingPlayer,
             Source = new EffectSource.MapActivation(endNode.Node, fu.CardId),
             TransportBonusGems = st.ChosenCount,
+            ActivationDepth = ctx.ActivationDepth + 1,
         };
         st.ActivationHandler = sub;
         st.ActivationCtx = subCtx;
