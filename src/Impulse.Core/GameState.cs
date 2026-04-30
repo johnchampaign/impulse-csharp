@@ -66,4 +66,59 @@ public sealed class GameState
         int i = Players.ToList().FindIndex(p => p.Id == ActivePlayer);
         return (i + 1) % Players.Count;
     }
+
+    // Deep clone for AI lookahead/MCTS. Shares immutable refs (Map,
+    // CardsById, individual record types like ShipPlacement) and copies
+    // every mutable container. The clone gets a suppressed log so the
+    // simulation doesn't leak into the real game's log file. Random is
+    // forked with a new seed derived from this one's next() so simulations
+    // are deterministic per call but don't disturb the caller's RNG state
+    // beyond a single advance.
+    //
+    // Mid-effect state (PendingEffect, IsResolvingPlan,
+    // CurrentlyResolvingPlanCardId) is copied as-is, but cloning during
+    // an unfinished effect is not generally supported — handler state is
+    // kept in EffectContext.HandlerState as opaque object refs and may
+    // not deep-clone correctly. Clone safely between turns / phases.
+    public GameState Clone()
+    {
+        var clonedPlayers = Players.Select(p => new PlayerState
+        {
+            Id = p.Id,
+            Race = p.Race,
+            Color = p.Color,
+            Techs = p.Techs,
+            ShipsAvailable = p.ShipsAvailable,
+            Prestige = p.Prestige,
+            Hand = new List<int>(p.Hand),
+            Plan = new List<int>(p.Plan),
+            NextPlan = p.NextPlan?.ToList(),
+            Minerals = new List<int>(p.Minerals),
+        }).ToList();
+
+        var clone = new GameState
+        {
+            Map = Map,
+            CardsById = CardsById,
+            Players = clonedPlayers,
+            Rng = new Random(Rng.Next()),
+            Log = new GameLog { Suppressed = true },
+        };
+        clone.Deck.AddRange(Deck);
+        clone.Discard.AddRange(Discard);
+        clone.Impulse.AddRange(Impulse);
+        clone.ImpulseCursor = ImpulseCursor;
+        foreach (var sp in ShipPlacements)
+            clone.ShipPlacements.Add(sp);
+        foreach (var kv in NodeCards)
+            clone.NodeCards[kv.Key] = kv.Value;
+        clone.CurrentTurn = CurrentTurn;
+        clone.ActivePlayer = ActivePlayer;
+        clone.Phase = Phase;
+        clone.IsGameOver = IsGameOver;
+        clone.HomePicksDone = HomePicksDone;
+        clone.IsResolvingPlan = IsResolvingPlan;
+        clone.CurrentlyResolvingPlanCardId = CurrentlyResolvingPlanCardId;
+        return clone;
+    }
 }
