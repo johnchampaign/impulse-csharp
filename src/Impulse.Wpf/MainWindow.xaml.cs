@@ -707,7 +707,11 @@ public partial class MainWindow : Window
                 // Restore the previously-saved selection for this seat if
                 // available; otherwise default to Greedy.
                 int seatIdx = i - 1;
-                int desiredIdx = 1 + (int)AiPolicy.Greedy;
+                // First-run default: CoreRush — the strongest baseline by
+                // bench (~24-66% win rate across 2/4/6 player counts; the
+                // others trail). Once the user picks anything else, the
+                // saved selection from LobbyPrefs takes precedence below.
+                int desiredIdx = 1 + (int)AiPolicy.CoreRush;
                 if (seatIdx < prefs.AiSelections.Length)
                 {
                     var saved = prefs.AiSelections[seatIdx];
@@ -1526,14 +1530,36 @@ public partial class MainWindow : Window
             var pos = new Point(mid.X + nx * offset, mid.Y + ny * offset);
 
             int count = grp.Count();
+            bool gateHighlighted = _highlightGates.Contains(grp.Key.Gate);
+            // When this gate is a legal click target (origin / destination),
+            // draw an accent-colored ring around the cruiser square so the
+            // highlight is visible on top of the player-coloured fill.
+            // Without this the gate's accent stroke is hidden behind the
+            // square and the player can't tell the gate is selectable.
+            if (gateHighlighted)
+            {
+                var ring = new Rectangle
+                {
+                    Width = 24, Height = 24,
+                    Fill = Brushes.Transparent,
+                    Stroke = (Brush)FindResource("Accent"),
+                    StrokeThickness = 3,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(ring, pos.X - 12);
+                Canvas.SetTop(ring, pos.Y - 12);
+                Canvas.SetZIndex(ring, 13);
+                MapCanvas.Children.Add(ring);
+            }
             var sq = new Rectangle
             {
                 Width = 16, Height = 16,
                 Fill = PlayerBrush(_g.Player(grp.Key.Owner).Color),
-                Stroke = Brushes.Black, StrokeThickness = 1,
+                Stroke = gateHighlighted ? (Brush)FindResource("Accent") : Brushes.Black,
+                StrokeThickness = gateHighlighted ? 2 : 1,
                 IsHitTestVisible = true,
                 ToolTip = perGateTooltip[grp.Key.Gate],
-                Cursor = _highlightGates.Contains(grp.Key.Gate) ? Cursors.Hand : Cursors.Arrow,
+                Cursor = gateHighlighted ? Cursors.Hand : Cursors.Arrow,
             };
             Canvas.SetLeft(sq, pos.X - 8);
             Canvas.SetTop(sq, pos.Y - 8);
@@ -1706,6 +1732,7 @@ public partial class MainWindow : Window
         {
             var node = _g.Map.Node(grp.Key);
             var center = HexCenter(node.AxialQ, node.AxialR);
+            bool nodeHighlighted = _highlightNodes.Contains(grp.Key);
             int n = grp.Count();
             int i = 0;
             foreach (var ship in grp)
@@ -1714,15 +1741,35 @@ public partial class MainWindow : Window
                 double radius = n == 1 ? 0 : HexRadius * 0.35;
                 double sx = center.X + radius * Math.Cos(angle);
                 double sy = center.Y + radius * Math.Sin(angle) + 8;
+                // Highlight ring under the dot when this node is a legal
+                // click target — same idea as the cruiser highlight but
+                // for transports. Drawn first so the dot sits on top.
+                if (nodeHighlighted)
+                {
+                    var ring = new Ellipse
+                    {
+                        Width = 20, Height = 20,
+                        Fill = Brushes.Transparent,
+                        Stroke = (Brush)FindResource("Accent"),
+                        StrokeThickness = 3,
+                        IsHitTestVisible = false,
+                    };
+                    Canvas.SetLeft(ring, sx - 10);
+                    Canvas.SetTop(ring, sy - 10);
+                    Canvas.SetZIndex(ring, 12);
+                    MapCanvas.Children.Add(ring);
+                }
                 var dot = new Ellipse
                 {
                     Width = 12, Height = 12,
                     Fill = PlayerBrush(_g.Player(ship.Owner).Color),
-                    Stroke = Brushes.Black, StrokeThickness = 1,
+                    Stroke = nodeHighlighted ? (Brush)FindResource("Accent") : Brushes.Black,
+                    StrokeThickness = nodeHighlighted ? 2 : 1,
                     IsHitTestVisible = false,
                 };
                 Canvas.SetLeft(dot, sx - 6);
                 Canvas.SetTop(dot, sy - 6);
+                Canvas.SetZIndex(dot, 11);
                 MapCanvas.Children.Add(dot);
                 i++;
             }
