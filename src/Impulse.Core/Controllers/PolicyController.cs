@@ -142,7 +142,22 @@ public sealed class PolicyController : IPlayerController
             case CardActionType.Sabotage:
                 // No legal target = no score.
                 if (!HasAnyEnemyShip(g)) return 1;
-                // Munchkins / Warriors love sabotage when trailing.
+                // Asymmetric upside: failed bombs cost nothing; successful
+                // bombs both score prestige and destroy ships. Always good
+                // when there's a target. Bonus when there's a fat fleet to
+                // hit (more ships destroyed = more prestige scored).
+                int biggestFleet = g.ShipPlacements
+                    .Where(sp => sp.Owner != Seat)
+                    .GroupBy(sp => (sp.Owner, sp.Location switch
+                    {
+                        ShipLocation.OnNode n => (0, n.Node.Value),
+                        ShipLocation.OnGate gateLoc => (1, gateLoc.Gate.Value),
+                        _ => (-1, 0),
+                    }))
+                    .Select(grp => grp.Count())
+                    .DefaultIfEmpty(0)
+                    .Max();
+                baseScore += Math.Min(biggestFleet, 3);
                 if (meTrails && (Policy == AiPolicy.Munchkin || Policy == AiPolicy.Warrior))
                     baseScore += 2;
                 break;
@@ -206,7 +221,7 @@ public sealed class PolicyController : IPlayerController
                     : fs.Min + _rng.Next(fs.Max - fs.Min + 1);
                 break;
             case SelectTechSlotRequest ts:
-                ts.Chosen = _rng.Next(2) == 0 ? TechSlot.Left : TechSlot.Right;
+                ts.Chosen = ChooseTechSlot(g, ts);
                 break;
             case SelectFromOptionsRequest opt:
                 opt.Chosen = _rng.Next(opt.Options.Count);
@@ -221,52 +236,88 @@ public sealed class PolicyController : IPlayerController
 
     private ShipLocation ChooseFleet(GameState g, SelectFleetRequest f)
     {
-        // Warrior: prefer fleet adjacent to or co-located with enemies.
-        // CoreRush: prefer fleet closest to Sector Core.
+        // Universal: penalise cruisers sitting on Sector Core gates as
+        // origins. Each one earns +1 prestige per turn from Phase 5
+        // patrol scoring; moving them off forfeits future income. Only
+        // override when no other origin is offered.
+        var coreGates = g.Map.AdjacencyByNode[g.Map.SectorCoreNodeId]
+            .Select(gate => gate.Id)
+            .ToHashSet();
+        int CoreGateStickiness(ShipLocation loc) =>
+            loc is ShipLocation.OnGate gateLoc && coreGates.Contains(gateLoc.Gate)
+                ? -10 : 0;
+
         if (Policy == AiPolicy.Warrior)
         {
-            var ranked = f.LegalLocations
-                .OrderByDescending(loc => EnemyProximityScore(g, loc))
-                .ToList();
-            return BestRandom(ranked, loc => EnemyProximityScore(g, loc));
+            return BestRandom(f.LegalLocations,
+                loc => EnemyProximityScore(g, loc) + CoreGateStickiness(loc));
         }
         if (Policy == AiPolicy.CoreRush)
         {
-            return BestRandom(f.LegalLocations, loc => -DistanceToCore(g, loc));
+            return BestRandom(f.LegalLocations,
+                loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc));
         }
-        // Munchkin: prefer fleets near the leader (to attack/sabotage).
         if (Policy == AiPolicy.Munchkin && LeaderId(g) is { } leader)
         {
-            return BestRandom(f.LegalLocations, loc => LeaderProximityScore(g, leader, loc));
+            return BestRandom(f.LegalLocations,
+                loc => LeaderProximityScore(g, leader, loc) + CoreGateStickiness(loc));
         }
-        // Greedy: bias toward Sector Core too (it's the highest-EV move).
         if (Policy == AiPolicy.Greedy)
         {
-            return BestRandom(f.LegalLocations, loc => -DistanceToCore(g, loc));
+            return BestRandom(f.LegalLocations,
+                loc => -DistanceToCore(g, loc) + CoreGateStickiness(loc));
         }
         return f.LegalLocations[_rng.Next(f.LegalLocations.Count)];
     }
 
+    // Tech slot choice: prefer to overwrite the BasicUnique (Right) slot
+    // since Basic Common is the universally-useful flexible default —
+    // matches the rulebook's general advice (p.20-ish).
+    private TechSlot ChooseTechSlot(GameState g, SelectTechSlotRequest ts)
+    {
+        var p = g.Player(Seat);
+        // If exactly one slot still holds a Basic-* tech, sacrifice it
+        // before overwriting a Researched card we already invested in.
+        bool leftIsBasic = p.Techs.Left is Tech.BasicCommon or Tech.BasicUnique;
+        bool rightIsBasic = p.Techs.Right is Tech.BasicCommon or Tech.BasicUnique;
+        if (leftIsBasic && !rightIsBasic) return TechSlot.Left;
+        if (rightIsBasic && !leftIsBasic) return TechSlot.Right;
+        // Both basic: prefer Right (BasicUnique). Both researched: arbitrary.
+        if (leftIsBasic && rightIsBasic) return TechSlot.Right;
+        return _rng.Next(2) == 0 ? TechSlot.Left : TechSlot.Right;
+    }
+
     private IReadOnlyList<ShipLocation> ChoosePath(GameState g, DeclareMoveRequest m)
     {
+        // Universal battle-safety adjustment: every policy avoids paths
+        // that force us into an unwinnable fight. The origin determines
+        // our cruiser count; the path's last location is checked for
+        // enemy cruisers (where a battle would actually happen).
+        int Safety(IReadOnlyList<ShipLocation> p) => BattleSafetyScore(g, m.Origin, p[^1]);
+
         if (Policy == AiPolicy.CoreRush)
         {
-            return BestRandom(m.LegalPaths, path => -DistanceToCore(g, path[^1]));
+            return BestRandom(m.LegalPaths,
+                path => -DistanceToCore(g, path[^1]) + Safety(path));
         }
         if (Policy == AiPolicy.Warrior)
         {
-            return BestRandom(m.LegalPaths, path => EnemyProximityScore(g, path[^1]));
+            // Warrior wants engagement, but only winnable engagement.
+            return BestRandom(m.LegalPaths,
+                path => EnemyProximityScore(g, path[^1]) + Safety(path));
         }
         if (Policy == AiPolicy.Munchkin && LeaderId(g) is { } leader)
         {
-            return BestRandom(m.LegalPaths, path => LeaderProximityScore(g, leader, path[^1]));
+            return BestRandom(m.LegalPaths,
+                path => LeaderProximityScore(g, leader, path[^1]) + Safety(path));
         }
-        // Greedy: prefer paths ending closer to Sector Core for ongoing scoring.
         if (Policy == AiPolicy.Greedy)
         {
-            return BestRandom(m.LegalPaths, path => -DistanceToCore(g, path[^1]));
+            return BestRandom(m.LegalPaths,
+                path => -DistanceToCore(g, path[^1]) + Safety(path));
         }
-        return m.LegalPaths[_rng.Next(m.LegalPaths.Count)];
+        // Refine, defaults: avoid losing battles; otherwise pick at random.
+        return BestRandom(m.LegalPaths, path => Safety(path));
     }
 
     // Score by proximity to the leader's ships — higher score = closer to
@@ -284,10 +335,49 @@ public sealed class PolicyController : IPlayerController
         return score;
     }
 
+    // Battle-likelihood score for a path. Positive when the path ends in
+    // a winnable fight (our cruisers > theirs), strongly negative when the
+    // path forces us into a fight we'll likely lose (defender wins ties,
+    // and losing a battle costs us all our cruisers + scores prestige for
+    // the winner). Returns 0 when no contact is anticipated.
+    private int BattleSafetyScore(GameState g, ShipLocation origin, ShipLocation finalLoc)
+    {
+        if (origin is not ShipLocation.OnGate fromGate) return 0;
+        if (finalLoc is not ShipLocation.OnGate toGate) return 0;
+
+        int myCruisers = g.ShipPlacements.Count(sp =>
+            sp.Owner == Seat &&
+            sp.Location is ShipLocation.OnGate og && og.Gate == fromGate.Gate);
+        // Enemy cruiser count at the destination gate.
+        int enemyAtDest = g.ShipPlacements.Count(sp =>
+            sp.Owner != Seat &&
+            sp.Location is ShipLocation.OnGate og && og.Gate == toGate.Gate);
+        if (enemyAtDest == 0) return 0; // no battle anticipated here
+
+        // Cruiser-icon draws favour whoever has more cruisers. Defender
+        // also wins ties. Treat winnable as "strict majority of cruisers".
+        if (myCruisers > enemyAtDest) return 6;          // winnable
+        if (myCruisers == enemyAtDest) return -8;        // tie → defender wins
+        return -12;                                      // outnumbered, likely rout
+    }
+
     private int? ChooseHandCard(GameState g, SelectHandCardRequest h)
     {
         if (h.LegalCardIds.Count == 0)
             return h.AllowNone ? null : 0;
+        // Exploration: when forced to place a card from hand face-up on a
+        // sector, don't burn a high-EV card. Pick the card with the LOWEST
+        // ScoreCard value (i.e. the worst card we could play normally) —
+        // it'll still create a sector everyone can use, but we lose the
+        // least by sacrificing it.
+        bool isExploration = h.Prompt.StartsWith("Exploring", StringComparison.Ordinal);
+        if (isExploration)
+        {
+            return h.LegalCardIds
+                .OrderBy(id => ScoreCard(g, g.CardsById[id]))
+                .ThenBy(_ => _rng.Next())
+                .First();
+        }
         // Refine doesn't want to discard mineral-friendly cards (size 1's
         // would be mined, larger trades give points). Prefer largest.
         if (Policy == AiPolicy.Refine)
@@ -315,11 +405,18 @@ public sealed class PolicyController : IPlayerController
 
     private SabotageTarget ChooseSabotageTarget(GameState g, SelectSabotageTargetRequest sab)
     {
-        // Warrior + Munchkin: pick highest-prestige opponent's fleet.
+        // Sabotage scores prestige per ship destroyed (capped at fleet
+        // size — no overkill). Prefer the LARGEST enemy fleet at any
+        // legal target so each successful bomb pays.
+        int FleetSize(SabotageTarget t) => g.ShipPlacements.Count(sp =>
+            sp.Owner == t.Owner && Mechanics.LocationsEqual(sp.Location, t.Location));
+
+        // Warrior + Munchkin: tiebreak on highest-prestige owner.
         if (Policy == AiPolicy.Warrior || Policy == AiPolicy.Munchkin)
         {
             return sab.LegalTargets
-                .OrderByDescending(t => g.Player(t.Owner).Prestige)
+                .OrderByDescending(t => FleetSize(t))
+                .ThenByDescending(t => g.Player(t.Owner).Prestige)
                 .ThenBy(_ => _rng.Next())
                 .First();
         }
