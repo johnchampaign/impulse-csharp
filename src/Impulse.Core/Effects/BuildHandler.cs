@@ -214,7 +214,7 @@ public sealed class BuildHomeAndEachOccupiedHandler : IEffectHandler
             {
                 Player = ctx.ActivatingPlayer,
                 LegalLocations = legal,
-                Prompt = $"Build {st.Count} ship(s) at home (transport on node, or cruiser on a home gate). Then {st.Count} ship(s) auto-builds at each non-home {prms.ColorFilter} sector you have a transport on.",
+                Prompt = $"Build {st.Count} ship(s) at home (transport on node, or cruiser on a home gate). You'll then be prompted again for each non-home {prms.ColorFilter} sector you occupy.",
             };
             st.Stage = Stage.AwaitingHomePlacement;
             ctx.Paused = true;

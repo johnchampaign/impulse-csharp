@@ -1107,7 +1107,7 @@ public partial class MainWindow : Window
                 break;
 
             case SelectShipPlacementRequest sp:
-                PromptText.Text = "Click a location to Build at.";
+                PromptText.Text = sp.Prompt.Length > 0 ? sp.Prompt : "Click a location to Build at.";
                 HighlightLocations(sp.LegalLocations);
                 _onMapLocClick = loc =>
                 {

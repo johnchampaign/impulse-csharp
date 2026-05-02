@@ -222,6 +222,56 @@ public class BuildHandlerTests
     }
 
     [Fact]
+    public void Build_home_and_each_with_gate_home_placement_still_prompts_for_match()
+    {
+        // Reproduces the c57 bug: user picks an OnGate location for the
+        // home placement, then the handler must still per-match-prompt for
+        // each occupied non-home matching sector. Asserts BOTH prompts fire
+        // and that the second prompt offers BOTH the node AND gates.
+        var (g, _) = Bootstrap();
+        var p1 = new PlayerId(1);
+        var home = g.Map.HomeNodeIds[p1];
+        var nonHomes = g.Map.Nodes.Where(n => !n.IsHome && !n.IsSectorCore).Select(n => n.Id).Take(2).ToList();
+        int blueCardId = g.CardsById.Values.First(c => c.Color == Impulse.Core.Cards.CardColor.Blue).Id;
+        g.NodeCards[nonHomes[0]] = new NodeCardState.FaceUp(blueCardId);
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnNode(nonHomes[0])));
+        g.Player(p1).ShipsAvailable = 12;
+
+        var handler = new BuildHomeAndEachOccupiedHandler(BuildHomeAndEachOccupiedHandler.ByCardId);
+        var ctx = new EffectContext
+        {
+            ActivatingPlayer = p1,
+            Source = new EffectSource.ImpulseCard(57), // c57 → Blue filter
+        };
+
+        int promptCount = 0;
+        bool secondPromptOfferedNodeAndGate = false;
+        Resolve(g, handler, ctx, choice =>
+        {
+            var req = (SelectShipPlacementRequest)choice;
+            promptCount++;
+            if (promptCount == 1)
+            {
+                // Home prompt — pick a GATE (this is the path the user took).
+                var gate = req.LegalLocations.OfType<ShipLocation.OnGate>().First();
+                req.Chosen = gate;
+            }
+            else
+            {
+                // Match prompt — must offer both the node and at least one gate.
+                bool hasNode = req.LegalLocations.OfType<ShipLocation.OnNode>().Any(n => n.Node == nonHomes[0]);
+                bool hasGate = req.LegalLocations.OfType<ShipLocation.OnGate>().Any();
+                secondPromptOfferedNodeAndGate = hasNode && hasGate;
+                req.Chosen = req.LegalLocations.OfType<ShipLocation.OnNode>().First();
+            }
+        });
+
+        Assert.Equal(2, promptCount);
+        Assert.True(secondPromptOfferedNodeAndGate,
+            "Per-match prompt must offer both the node (transport) and adjacent gates (cruiser).");
+    }
+
+    [Fact]
     public void Cruiser_at_occupied_offers_gates_of_transport_nodes()
     {
         var (g, _) = Bootstrap();
