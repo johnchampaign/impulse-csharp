@@ -35,8 +35,11 @@ public static class Movement
     //   - Transport: cannot move ONTO a card patrolled by an enemy
     //     (enemy cruiser on a gate touching the destination node). Transports
     //     CAN coexist with enemy transports on a card.
-    //   - Cruiser: slice C2 — no restriction. Battle/patrol-through interaction
-    //     lands in slice C6.
+    //   - Cruiser: pathing returns ALL gate-to-gate moves; battle and
+    //     patrol-through enforcement happen at execution time inside
+    //     CommandHandler / tech handlers (search "IsPatrolledByEnemy" in
+    //     this directory). Path enumeration intentionally does not pre-filter
+    //     because the player needs to see all reachable gates to choose.
     public static IReadOnlyList<IReadOnlyList<ShipLocation>> EnumeratePaths(
         GameState g, PlayerId mover, ShipLocation origin, int maxMoves)
     {
@@ -64,7 +67,7 @@ public static class Movement
     public static bool IsBlockedFor(GameState g, PlayerId mover, ShipLocation dest) => dest switch
     {
         ShipLocation.OnNode n => IsPatrolledByEnemy(g, mover, n.Node),
-        ShipLocation.OnGate => false, // slice C2: cruisers move freely
+        ShipLocation.OnGate => false, // cruiser gates are always enumerable; battle/patrol enforcement happens at execution time in CommandHandler
         _ => false,
     };
 

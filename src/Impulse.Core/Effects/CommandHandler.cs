@@ -14,7 +14,8 @@ public enum CommandBoostTarget { MaxFleetSize, MoveCount, FleetCount }
 // FleetCount > 1 (multi-fleet "apiece" cards) supported: each fleet gets
 // its own origin → count → path → execute cycle, with battle/exploration/
 // activation per fleet. Same-destination convergence (rulebook p.31 "must
-// move to the same card") is not yet enforced — players are trusted.
+// move to the same card") is enforced via ConvergenceSet narrowing — see
+// CompatNodes() and the LegalOrigins / TransitionToPath filters.
 // BoostTarget identifies which [N] in the card text gets boosted.
 public sealed record CommandParams(
     int MaxFleetSize,
@@ -143,8 +144,6 @@ public sealed class CommandHandler : IEffectHandler
             ? prms.MaxFleetSize + boost : prms.MaxFleetSize;
         int effectiveMoves = prms.BoostTarget == CommandBoostTarget.MoveCount
             ? prms.MoveCount + boost : prms.MoveCount;
-        // FleetCount boost is recognized but only matters once multi-fleet is
-        // implemented (slice C5+).
         int effectiveFleetCount = prms.BoostTarget == CommandBoostTarget.FleetCount
             ? prms.FleetCount + boost : prms.FleetCount;
 
@@ -665,7 +664,8 @@ public static class CommandRegistrations
 {
     // Per-card params. ShipType reuses BuildShipFilter (same three-state set).
     // FleetCount>1 cards (c75, c98) move multiple fleets, each independently
-    // chosen. Same-destination "apiece" rule is not yet enforced.
+    // chosen. Same-destination "apiece" rule is enforced (see ConvergenceSet
+    // narrowing in CommandHandler.Execute / TransitionToPath).
     public static readonly Dictionary<int, CommandParams> ByCardId = new()
     {
         [4]   = new(MaxFleetSize:1, MoveCount: 1, ShipType: BuildShipFilter.Either, BoostTarget: CommandBoostTarget.MaxFleetSize),

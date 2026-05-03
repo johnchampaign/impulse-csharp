@@ -10,8 +10,9 @@ public sealed record Race(
 
 public static class Races
 {
-    // Names + tech text are placeholders pending a verified read of raza1-6.jpg
-    // (Piscesish text confirmed in core-model doc; others TBD).
+    // Names and tech texts confirmed against raza1-6.jpg (Vassal art) and the
+    // rulebook. Each race's BasicUniqueTechSlug resolves to a registered
+    // handler in Effects/BasicUniqueTechHandlers.cs.
     public static readonly Race Piscesish = new(
         1, "Piscesish", PlayerColor.Blue,
         "tech_basic_unique_piscesish",

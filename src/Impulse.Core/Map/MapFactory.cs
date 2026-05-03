@@ -2,9 +2,9 @@ using Impulse.Core.Players;
 
 namespace Impulse.Core.Map;
 
-// Slice A: 3-4-5-4-3 hex (19 nodes), center = Sector Core, gates between
-// every pair of axial-adjacent nodes. Per-player-count home assignments are
-// flavor and TBD against rulebook p.5; the graph is fixed.
+// 3-4-5-4-3 hex (19 nodes), center = Sector Core, gates between every pair
+// of axial-adjacent nodes. Per-player-count home assignments match rulebook
+// p.5 (corner placement adapted to seat count). The graph is fixed.
 public static class MapFactory
 {
     private static readonly (int q, int r)[] HexAxial =
