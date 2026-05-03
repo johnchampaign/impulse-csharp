@@ -289,4 +289,135 @@ public class BattleTriggerTests
         Assert.False(g.IsGameOver);
         Assert.True(ctx.IsComplete);
     }
+
+    [Fact]
+    public void Patrol_through_battle_destroys_third_party_transports_on_passage_node()
+    {
+        // Rulebook p.28: "A Cruiser fleet that moves through a card containing
+        // enemy Transports destroys them all... if movement results in a
+        // battle, the Transports are only destroyed if you win."
+        //
+        // Scenario: P1 (attacker) moves cruiser through node X to fight P2's
+        // patrolling cruiser. P3 (bystander, not in the battle) has transports
+        // on node X. When P1 wins the battle, P3's transports MUST also be
+        // destroyed — they were on the card P1's cruiser passed through.
+        var r = new EffectRegistry();
+        CommandRegistrations.RegisterAll(r);
+        var g = SetupFactory.NewGame(
+            new SetupOptions(3, Seed: 1,
+                InitialTransportsAtHome: 0,
+                InitialCruisersAtHomeGate: 0, AllNodesFaceUp: true,
+                InitialHandSize: 0),
+            r);
+        var p1 = new PlayerId(1);
+        var p2 = new PlayerId(2);
+        var p3 = new PlayerId(3);
+
+        // Pick a passage node with ≥3 gates so we have 3 distinct positions.
+        var passageNode = g.Map.Nodes.First(n =>
+            !n.IsHome && !n.IsSectorCore &&
+            g.Map.AdjacencyByNode[n.Id].Count() >= 3).Id;
+        var gates = g.Map.AdjacencyByNode[passageNode].ToList();
+        var startGate = gates[0];   // P1 cruiser starts here
+        var targetGate = gates[1];  // P1 cruiser tries to move here (through passage)
+        var p2PatrolGate = gates[2]; // P2 cruiser patrols passage via this gate
+
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(startGate.Id)));
+        g.ShipPlacements.Add(new(p2, new ShipLocation.OnGate(p2PatrolGate.Id)));
+        // P3 has 2 transports on the passage node — uninvolved bystander.
+        g.ShipPlacements.Add(new(p3, new ShipLocation.OnNode(passageNode)));
+        g.ShipPlacements.Add(new(p3, new ShipLocation.OnNode(passageNode)));
+
+        // Stack the deck so P1 (attacker) wins: P2 first draw size 1, P1 first
+        // draw size 3.
+        var s3 = g.Deck.First(id => g.CardsById[id].Size == 3);
+        g.Deck.Remove(s3);
+        var s1 = g.Deck.First(id => g.CardsById[id].Size == 1);
+        g.Deck.Remove(s1);
+        // BattleResolver draws defender first then attacker.
+        g.Deck.Insert(0, s1);
+        g.Deck.Insert(1, s3);
+
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 31); // c31: cruiser, 1 fleet, 1 move
+        RunToCompletion(handler, g, ctx, choice =>
+        {
+            switch (choice)
+            {
+                case SelectFleetRequest f: f.Chosen = new ShipLocation.OnGate(startGate.Id); break;
+                case SelectFleetSizeRequest fs: fs.Chosen = fs.Min; break;
+                case DeclareMoveRequest m:
+                    m.ChosenPath = m.LegalPaths.First(p =>
+                        p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == targetGate.Id);
+                    break;
+                case SelectHandCardRequest h: h.ChosenCardId = null; break;
+            }
+        });
+
+        // P1 wins → P3's bystander transports on passage node ALL destroyed.
+        Assert.DoesNotContain(g.ShipPlacements, sp =>
+            sp.Owner == p3 && sp.Location is ShipLocation.OnNode n && n.Node == passageNode);
+        // P2's cruiser also destroyed (the battle).
+        Assert.DoesNotContain(g.ShipPlacements, sp =>
+            sp.Owner == p2 && sp.Location is ShipLocation.OnGate);
+        // P1 scores: +1 battle win + 1 (P2 cruiser) + 2 (P3 transports) = 4.
+        Assert.Equal(4, g.Player(p1).Prestige);
+    }
+
+    [Fact]
+    public void Patrol_through_battle_lost_does_not_destroy_third_party_transports()
+    {
+        // Mirror of above: P1 LOSES the patrol-through battle. P3's transports
+        // on the passage node must SURVIVE (rulebook: "destroyed only if you
+        // win the battle").
+        var r = new EffectRegistry();
+        CommandRegistrations.RegisterAll(r);
+        var g = SetupFactory.NewGame(
+            new SetupOptions(3, Seed: 1,
+                InitialTransportsAtHome: 0,
+                InitialCruisersAtHomeGate: 0, AllNodesFaceUp: true,
+                InitialHandSize: 0),
+            r);
+        var p1 = new PlayerId(1);
+        var p2 = new PlayerId(2);
+        var p3 = new PlayerId(3);
+        var passageNode = g.Map.Nodes.First(n =>
+            !n.IsHome && !n.IsSectorCore &&
+            g.Map.AdjacencyByNode[n.Id].Count() >= 3).Id;
+        var gates = g.Map.AdjacencyByNode[passageNode].ToList();
+        var startGate = gates[0];
+        var targetGate = gates[1];
+        var p2PatrolGate = gates[2];
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(startGate.Id)));
+        g.ShipPlacements.Add(new(p2, new ShipLocation.OnGate(p2PatrolGate.Id)));
+        g.ShipPlacements.Add(new(p3, new ShipLocation.OnNode(passageNode)));
+
+        // Stack: P2 (defender) draws size 3, P1 draws size 1 → P2 wins.
+        var s3 = g.Deck.First(id => g.CardsById[id].Size == 3);
+        g.Deck.Remove(s3);
+        var s1 = g.Deck.First(id => g.CardsById[id].Size == 1);
+        g.Deck.Remove(s1);
+        g.Deck.Insert(0, s3);
+        g.Deck.Insert(1, s1);
+
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 31);
+        RunToCompletion(handler, g, ctx, choice =>
+        {
+            switch (choice)
+            {
+                case SelectFleetRequest f: f.Chosen = new ShipLocation.OnGate(startGate.Id); break;
+                case SelectFleetSizeRequest fs: fs.Chosen = fs.Min; break;
+                case DeclareMoveRequest m:
+                    m.ChosenPath = m.LegalPaths.First(p =>
+                        p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == targetGate.Id);
+                    break;
+                case SelectHandCardRequest h: h.ChosenCardId = null; break;
+            }
+        });
+
+        // P1 lost → P3's transport SURVIVES on passage node.
+        Assert.Contains(g.ShipPlacements, sp =>
+            sp.Owner == p3 && sp.Location is ShipLocation.OnNode n && n.Node == passageNode);
+    }
 }

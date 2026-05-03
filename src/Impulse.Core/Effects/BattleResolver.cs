@@ -241,15 +241,23 @@ public static class BattleResolver
                 Mechanics.DestroyShipAt(g, v.Owner, v.Location, attackerForPrestige: null, g.Log);
                 destroyedCount++;
             }
-            // Patrol-through: transports on passage node also destroyed (rulebook p.28).
+            // Patrol-through: transports on passage node also destroyed
+            // (rulebook p.28: "A Cruiser fleet that moves through a card
+            // containing enemy Transports destroys them all"). ALL non-
+            // attacker transports are destroyed, not just the defender's —
+            // a battle resolved while passing through a card still counts
+            // as moving through that card for the destruction rule.
             if (bs.PassageNode is { } passageNode)
             {
                 var transports = g.ShipPlacements
-                    .Where(sp => sp.Owner == bs.Defender &&
+                    .Where(sp => sp.Owner != bs.Attacker &&
                                  sp.Location is ShipLocation.OnNode n && n.Node == passageNode)
                     .ToList();
                 foreach (var v in transports)
                 {
+                    // attackerForPrestige=null: prestige is awarded once
+                    // below via destroyedCount + Scoring.AddPrestige to
+                    // avoid double-counting.
                     Mechanics.DestroyShipAt(g, v.Owner, v.Location, attackerForPrestige: null, g.Log);
                     destroyedCount++;
                 }
