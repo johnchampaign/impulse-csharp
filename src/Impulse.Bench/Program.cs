@@ -13,6 +13,9 @@ using Impulse.Core.Engine;
 //   dotnet run --project src/Impulse.Bench -- --replay <path-to-log>
 //   dotnet run --project src/Impulse.Bench -- --replay-dir <dir>
 //   dotnet run --project src/Impulse.Bench -- --replay-dir %TEMP%
+//   dotnet run --project src/Impulse.Bench -- --fetch-public
+//      (Pulls the latest logs from johnchampaign/impulse-game-logs and
+//       analyzes the full public dataset.)
 //
 // Tournament flags:
 //   --games N         Number of games to run (default 200).
@@ -25,11 +28,19 @@ using Impulse.Core.Engine;
 //   --replay FILE     Analyze one log file.
 //   --replay-dir DIR  Analyze every impulse-game-*.log + impulse-last-game.log
 //                     in DIR (default: %TEMP%). Aggregates across all games.
+//   --fetch-public    Pull the latest logs from the canonical public dataset
+//                     repo (johnchampaign/impulse-game-logs) into a local
+//                     cache and analyze them. Subsequent runs do `git pull`
+//                     so it's fast.
+//   --repo OWNER/NAME Override the public-dataset repo (default
+//                     "johnchampaign/impulse-game-logs").
 //   --human-seat N    Which seat was the human player (default 1).
 //   --csv FILE        Also dump per-decision CSV rows to FILE.
 
 string? replayFile = null;
 string? replayDir = null;
+bool fetchPublic = false;
+string publicRepo = "johnchampaign/impulse-game-logs";
 int humanSeat = 1;
 string? csvOutPath = null;
 
@@ -57,6 +68,8 @@ for (int i = 0; i < args.Length; i++)
             break;
         case "--replay": replayFile = Next(); break;
         case "--replay-dir": replayDir = Next(); break;
+        case "--fetch-public": fetchPublic = true; break;
+        case "--repo": publicRepo = Next(); fetchPublic = true; break;
         case "--human-seat": humanSeat = int.Parse(Next()); break;
         case "--csv": csvOutPath = Next(); break;
         case "-h":
@@ -68,6 +81,85 @@ for (int i = 0; i < args.Length; i++)
             return 2;
     }
 }
+// ----- Optional: fetch / refresh the public log dataset -----
+if (fetchPublic)
+{
+    try
+    {
+        var cacheRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Impulse.Bench", "log-cache");
+        Directory.CreateDirectory(cacheRoot);
+        var slug = publicRepo.Replace('/', '_');
+        var localRepo = Path.Combine(cacheRoot, slug);
+        // Self-healing fetch: try `git pull` if the cache exists, but if
+        // upstream history has been rewritten (e.g. test logs deleted), fall
+        // back to a clean re-clone.
+        int RunGit(string args, string workingDir = "")
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("git", args)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            if (!string.IsNullOrEmpty(workingDir)) psi.WorkingDirectory = workingDir;
+            using var proc = System.Diagnostics.Process.Start(psi)
+                ?? throw new InvalidOperationException("git failed to start");
+            proc.WaitForExit();
+            return proc.ExitCode;
+        }
+
+        bool exists = Directory.Exists(Path.Combine(localRepo, ".git"));
+        if (exists)
+        {
+            Console.WriteLine($"Refreshing public dataset cache: {localRepo}");
+            // First try a regular pull. If it fails (diverged history,
+            // shallow-clone trouble, etc.), nuke the cache and fresh-clone.
+            int code = RunGit($"-C \"{localRepo}\" fetch --depth 1 origin main");
+            if (code == 0) code = RunGit($"-C \"{localRepo}\" reset --hard origin/main");
+            if (code != 0)
+            {
+                Console.WriteLine("  cache out of sync; re-cloning…");
+                try { Directory.Delete(localRepo, recursive: true); } catch { }
+                exists = false;
+            }
+        }
+        if (!exists)
+        {
+            Console.WriteLine($"Cloning public dataset: https://github.com/{publicRepo} → {localRepo}");
+            int code = RunGit($"clone --depth 1 https://github.com/{publicRepo}.git \"{localRepo}\"");
+            if (code != 0)
+            {
+                Console.Error.WriteLine($"git clone failed (exit {code}).");
+                return 3;
+            }
+        }
+        var logsDir = Path.Combine(localRepo, "logs");
+        if (!Directory.Exists(logsDir) || Directory.GetFiles(logsDir, "*.log").Length == 0)
+        {
+            Console.WriteLine("Public dataset is empty — no logs submitted yet.");
+            Console.WriteLine("(Once players click SUBMIT LOGS in the app, files will land");
+            Console.WriteLine($" at https://github.com/{publicRepo}/tree/main/logs)");
+            return 0;
+        }
+        // Public dataset filenames are <sha256>.log, not impulse-game-*.log.
+        // Build a sibling synthetic dir of impulse-game-*.log symlinks would
+        // be overkill; instead, point the analyzer to the logs/ directly and
+        // let it iterate everything it finds. The analyzer's file glob in
+        // ReplayAnalyzer is path-based; we override below by rewriting
+        // replayDir to the cache and stuffing its glob.
+        replayDir = logsDir;
+        Console.WriteLine($"Public dataset ready: {Directory.GetFiles(logsDir, "*.log").Length} log file(s)");
+        Console.WriteLine();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"--fetch-public failed: {ex.Message}");
+        return 3;
+    }
+}
+
 // ----- Replay-analyzer mode -----
 if (replayFile is not null || replayDir is not null)
 {
@@ -75,10 +167,10 @@ if (replayFile is not null || replayDir is not null)
     if (replayFile is not null) paths.Add(replayFile);
     if (replayDir is not null)
     {
-        // impulse-game-<timestamp>.log + impulse-last-game.log
-        paths.AddRange(Directory.GetFiles(replayDir, "impulse-game-*.log"));
-        var last = Path.Combine(replayDir, "impulse-last-game.log");
-        if (File.Exists(last)) paths.Add(last);
+        // Public dataset stores logs/<sha>.log; local %TEMP% archives use
+        // impulse-game-<timestamp>.log. Accept both patterns plus the
+        // canonical impulse-last-game.log.
+        paths.AddRange(Directory.GetFiles(replayDir, "*.log"));
     }
     paths = paths.Distinct().OrderBy(p => p).ToList();
 
