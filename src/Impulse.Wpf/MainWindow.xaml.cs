@@ -476,11 +476,14 @@ public partial class MainWindow : Window
             if (File.Exists(last)) paths.Add(last);
             var prev = IOPath.Combine(temp, "impulse-prev-game.log");
             if (File.Exists(prev)) paths.Add(prev);
-            // Drop duplicates by full path; cap by size sanity (skip empty
-            // stub logs that are just header lines, and absurdly large ones).
+            // Drop duplicates by full path; cap by size sanity. Floor is
+            // 400 bytes (not 200) because submitted content gets the local
+            // path header stripped (~75 bytes) before send, and the
+            // server requires > 200 bytes — the gap absorbs the strip
+            // plus a safety margin so short-but-real games never error.
             paths = paths.Distinct().Where(p =>
             {
-                try { var len = new FileInfo(p).Length; return len > 200 && len < 5_000_000; }
+                try { var len = new FileInfo(p).Length; return len > 400 && len < 5_000_000; }
                 catch { return false; }
             }).ToList();
 
@@ -549,13 +552,38 @@ public partial class MainWindow : Window
                 }
             }
 
-            string summary = $"Submitted: {newlySubmitted} new log(s).\n" +
-                             $"Already on server: {alreadyOnServer}.";
-            if (failed > 0) summary += $"\nFailed: {failed}.";
-            MessageBox.Show(this, summary,
-                "Submit logs",
-                MessageBoxButton.OK,
-                failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+            // Frame the result around what the user cares about: "did my
+            // submission help?" Stub/short-game rejections aren't
+            // actionable for the player and surfacing them as "Failed"
+            // reads like the player did something wrong. Only escalate to
+            // a Warning when literally nothing was accepted at all
+            // (genuine network or server outage).
+            string summary;
+            MessageBoxImage icon;
+            if (newlySubmitted > 0 && alreadyOnServer > 0)
+            {
+                summary = $"Thanks! Submitted {newlySubmitted} new game log(s).\n" +
+                          $"({alreadyOnServer} log(s) were already on the server.)";
+                icon = MessageBoxImage.Information;
+            }
+            else if (newlySubmitted > 0)
+            {
+                summary = $"Thanks! Submitted {newlySubmitted} new game log(s).";
+                icon = MessageBoxImage.Information;
+            }
+            else if (alreadyOnServer > 0)
+            {
+                summary = $"Your {alreadyOnServer} log(s) are already on the server. Thanks!";
+                icon = MessageBoxImage.Information;
+            }
+            else
+            {
+                summary = "Submission didn't reach the server. Could be a network " +
+                          "issue — try again later. (No data was lost; logs stay on " +
+                          "your machine.)";
+                icon = MessageBoxImage.Warning;
+            }
+            MessageBox.Show(this, summary, "Submit logs", MessageBoxButton.OK, icon);
         }
         finally
         {
