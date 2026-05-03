@@ -86,16 +86,19 @@ public class BattleTriggerTests
     [Fact]
     public void Cruiser_through_patrolled_card_resolves_battle()
     {
+        // Rulebook p.29: a cruiser cannot move through a patrolled card
+        // except to start a battle. The "battle" must end on a gate that
+        // contains an enemy cruiser — there is no rulebook concept of
+        // moving to an empty gate and being "redirected" to the patroller.
+        // So this test moves directly to the patroller's gate.
         var (g, _) = Bootstrap();
         var p1 = new PlayerId(1);
         var p2 = new PlayerId(2);
         var p1Home = g.Map.HomeNodeIds[p1];
         var startGate = g.Map.AdjacencyByNode[p1Home].First();
         var passageNode = startGate.EndpointA == p1Home ? startGate.EndpointB : startGate.EndpointA;
-        var targetGate = g.Map.AdjacencyByNode[passageNode]
-            .First(gate => gate.Id != startGate.Id);
         var enemyPatrolGate = g.Map.AdjacencyByNode[passageNode]
-            .First(gate => gate.Id != startGate.Id && gate.Id != targetGate.Id);
+            .First(gate => gate.Id != startGate.Id);
 
         g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(startGate.Id)));
         g.ShipPlacements.Add(new(p2, new ShipLocation.OnGate(enemyPatrolGate.Id)));
@@ -109,7 +112,7 @@ public class BattleTriggerTests
                 case SelectFleetRequest f: f.Chosen = new ShipLocation.OnGate(startGate.Id); break;
                 case DeclareMoveRequest m:
                     m.ChosenPath = m.LegalPaths.First(p =>
-                        p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == targetGate.Id);
+                        p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == enemyPatrolGate.Id);
                     break;
                 case SelectFleetSizeRequest fs: fs.Chosen = fs.Min; break;
                 case SelectHandCardRequest h: h.ChosenCardId = null; break;
@@ -348,7 +351,7 @@ public class BattleTriggerTests
                 case SelectFleetSizeRequest fs: fs.Chosen = fs.Min; break;
                 case DeclareMoveRequest m:
                     m.ChosenPath = m.LegalPaths.First(p =>
-                        p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == targetGate.Id);
+                        p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == p2PatrolGate.Id);
                     break;
                 case SelectHandCardRequest h: h.ChosenCardId = null; break;
             }
@@ -410,7 +413,7 @@ public class BattleTriggerTests
                 case SelectFleetSizeRequest fs: fs.Chosen = fs.Min; break;
                 case DeclareMoveRequest m:
                     m.ChosenPath = m.LegalPaths.First(p =>
-                        p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == targetGate.Id);
+                        p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == p2PatrolGate.Id);
                     break;
                 case SelectHandCardRequest h: h.ChosenCardId = null; break;
             }

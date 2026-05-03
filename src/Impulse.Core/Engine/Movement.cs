@@ -57,9 +57,41 @@ public static class Movement
         foreach (var step in Neighbors(g.Map, here))
         {
             if (IsBlockedFor(g, mover, step)) continue;
+
+            // Cruiser-through-patrol filter (rulebook p.29): a cruiser move
+            // gate→gate passing through an enemy-patrolled card is only
+            // legal if it "starts a battle" — i.e. the destination gate
+            // itself has an enemy cruiser to attack. Without this filter,
+            // path enumeration offers empty gates as destinations even
+            // though execution-time patrol-through interception will
+            // redirect the fleet to whichever gate the patroller is on,
+            // which is confusing UX (player clicks gate X, fleet ends up
+            // at gate Y because Y was where the actual enemy lived).
+            bool battleEndsTheStep = false;
+            if (here is ShipLocation.OnGate fromGate && step is ShipLocation.OnGate toGate)
+            {
+                var passage = SharedNode(g.Map, fromGate.Gate, toGate.Gate);
+                if (passage is { } passNode &&
+                    IsPatrolledByEnemy(g, mover, passNode) &&
+                    !HasEnemyCruiserOnGate(g, mover, toGate.Gate))
+                {
+                    // Passage is patrolled, but no enemy on the destination
+                    // gate — illegal traversal under the patrolbook rule.
+                    continue;
+                }
+                // If we're stepping ONTO an enemy-cruiser gate, this step
+                // resolves a battle and terminates the path.
+                if (HasEnemyCruiserOnGate(g, mover, toGate.Gate))
+                    battleEndsTheStep = true;
+            }
+
             current.Add(step);
             results.Add(current.ToList());
-            Walk(g, mover, step, remaining - 1, current, results);
+            // Don't continue exploring past a battle-resolving step: the
+            // battle interrupts movement, so any further steps would be
+            // unreachable in practice.
+            if (!battleEndsTheStep)
+                Walk(g, mover, step, remaining - 1, current, results);
             current.RemoveAt(current.Count - 1);
         }
     }
