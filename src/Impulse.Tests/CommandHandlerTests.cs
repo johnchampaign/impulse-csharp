@@ -451,6 +451,126 @@ public class CommandHandlerTests
     }
 
     [Fact]
+    public void Patrol_through_SC_with_five_enemy_patrollers_lets_P1_pick_any()
+    {
+        // 6-player game with everyone patrolling the Sector Core. P1 has a
+        // cruiser on one SC gate; P2..P6 each have a cruiser on the other
+        // five SC gates. P1 commands their cruiser to move through SC.
+        // Engine must prompt P1 with all 5 patrolling enemies as options
+        // and resolve the battle against whichever enemy P1 picks (not the
+        // first enemy it happens to enumerate).
+        var r = new EffectRegistry();
+        CommandRegistrations.RegisterAll(r);
+        var g = SetupFactory.NewGame(
+            new SetupOptions(6, Seed: 1,
+                InitialTransportsAtHome: 0,
+                InitialCruisersAtHomeGate: 0, AllNodesFaceUp: true,
+                InitialHandSize: 0),
+            r);
+        var sc = g.Map.SectorCoreNodeId;
+        var scGates = g.Map.AdjacencyByNode[sc].ToList();
+        Assert.True(scGates.Count >= 6, "Sector Core should have ≥6 gates");
+
+        // P1 cruiser on gate 0; P2..P6 each on gates 1..5.
+        var p1 = new PlayerId(1);
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(scGates[0].Id)));
+        for (int seat = 2; seat <= 6; seat++)
+        {
+            g.ShipPlacements.Add(new(
+                new PlayerId(seat),
+                new ShipLocation.OnGate(scGates[seat - 1].Id)));
+        }
+        // Sanity: 6 distinct cruisers, one per SC gate, each owned by a
+        // distinct player.
+        var scOccupied = g.ShipPlacements
+            .Where(sp => sp.Location is ShipLocation.OnGate og && scGates.Any(gt => gt.Id == og.Gate))
+            .ToList();
+        Assert.Equal(6, scOccupied.Count);
+        Assert.Equal(6, scOccupied.Select(sp => sp.Owner).Distinct().Count());
+
+        // Activate c31 (Cruiser, 1 fleet, 1 move) for P1.
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 31);
+
+        // Drive the handler. Each iteration either makes progress, hits the
+        // defender prompt, or reaches battle/completion.
+        SelectFromOptionsRequest? defenderPrompt = null;
+        for (int safety = 0; safety < 30; safety++)
+        {
+            handler.Execute(g, ctx);
+            if (ctx.IsComplete) break;
+            if (ctx.PendingChoice is null) break;
+            switch (ctx.PendingChoice)
+            {
+                case SelectFleetRequest f:
+                    f.Chosen = new ShipLocation.OnGate(scGates[0].Id);
+                    break;
+                case SelectFleetSizeRequest sz:
+                    sz.Chosen = sz.Min;
+                    break;
+                case DeclareMoveRequest dm:
+                    // Pick any path of length 1 ending at another SC gate
+                    // (so the cruiser passes through SC, triggering the
+                    // patrol-through battle).
+                    var path = dm.LegalPaths.FirstOrDefault(p =>
+                        p.Count == 1 && p[0] is ShipLocation.OnGate og &&
+                        scGates.Any(sg => sg.Id == og.Gate && og.Gate != scGates[0].Id));
+                    Assert.NotNull(path);
+                    dm.ChosenPath = path;
+                    break;
+                case SelectFromOptionsRequest opt:
+                    defenderPrompt = opt;
+                    goto Done;
+                default:
+                    throw new Xunit.Sdk.XunitException(
+                        $"Unexpected prompt: {ctx.PendingChoice.GetType().Name}");
+            }
+            ctx.Paused = false;
+        }
+        Done:
+
+        // (1) Defender prompt fired with all 5 enemies as options.
+        Assert.NotNull(defenderPrompt);
+        Assert.Equal(5, defenderPrompt!.Options.Count);
+        for (int seat = 2; seat <= 6; seat++)
+            Assert.Contains($"P{seat}", string.Join(" ", defenderPrompt.Options));
+
+        // (2) Pick the THIRD option (which should be P4 since candidates are
+        // sorted by player ID: P2, P3, P4, P5, P6 → index 2 is P4). Verify
+        // the engine actually fights P4, not whoever happens to be first.
+        defenderPrompt.Chosen = 2; // P4
+        ctx.Paused = false;
+        // Continue execution until battle either completes or pauses for
+        // reinforcement input.
+        for (int safety = 0; safety < 30; safety++)
+        {
+            handler.Execute(g, ctx);
+            if (ctx.IsComplete) break;
+            if (ctx.PendingChoice is null) break;
+            // The battle resolver may prompt for reinforcement cards; just
+            // accept "none" by submitting the smallest legal answer or
+            // whatever the prompt accepts. For this test, we only need to
+            // confirm WHO is the defender, which is set the moment battle
+            // setup runs — so peek at the log instead.
+            break;
+        }
+
+        // The battle log line includes the defender's player id.
+        bool found = false;
+        foreach (var line in g.Log.Lines)
+        {
+            if (line.Contains("Battle at") && line.Contains("P1") && line.Contains("attacks P4"))
+            {
+                found = true;
+                break;
+            }
+        }
+        Assert.True(found,
+            "Expected battle log line showing P1 attacks P4 (the chosen defender). " +
+            "Lines:\n" + string.Join("\n", g.Log.Lines.Where(l => l.Contains("Battle"))));
+    }
+
+    [Fact]
     public void All_command_cards_have_params()
     {
         var cards = CardDataLoader.LoadAll();
