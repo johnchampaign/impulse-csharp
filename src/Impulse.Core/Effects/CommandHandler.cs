@@ -63,6 +63,19 @@ public sealed class CommandHandler : IEffectHandler
         public int TotalFleets;
         public HashSet<(int, int)> UsedOrigins = new();
         public HashSet<NodeId>? ConvergenceSet;
+        // Multi-fleet "to same card" activation deferral (rulebook p.29 +
+        // designer ruling 2016-12-26 by Chris Cieslik / Asmadi):
+        //   "The move-two-fleets card should move them both together to
+        //    the same card, activating it only once."
+        // We collect the bonus-gem contributions from each arriving
+        // transport fleet but defer the actual activation call until
+        // every fleet has finished moving. This also ensures any cruiser
+        // fleets in the same command resolve their movement (battles,
+        // patrol-through transport destruction) BEFORE the activation
+        // sees the resulting board state.
+        public NodeId? PendingActivationNode;
+        public ShipLocation? PendingActivationLoc;
+        public int PendingActivationBonus;
     }
 
     public bool Execute(GameState g, EffectContext ctx)
@@ -321,7 +334,48 @@ public sealed class CommandHandler : IEffectHandler
             here = step;
             st.PathStepIndex++;
         }
+        // Single-fleet commands activate immediately. Multi-fleet commands
+        // defer activation until ALL fleets have finished moving — see
+        // PendingActivationNode docstring on State for rationale.
+        if (st.TotalFleets > 1)
+        {
+            return CaptureDeferredActivationAndComplete(g, ctx, st, here);
+        }
         return TryStartActivation(g, ctx, st, here);
+    }
+
+    // Multi-fleet path: a transport landing on a face-up card contributes
+    // to the deferred activation; cruisers and transports landing on
+    // non-face-up locations contribute nothing. Activation is fired in
+    // CompleteFleet once every fleet has resolved.
+    private bool CaptureDeferredActivationAndComplete(
+        GameState g, EffectContext ctx, State st, ShipLocation finalLoc)
+    {
+        if (finalLoc is ShipLocation.OnNode endNode &&
+            g.NodeCards.TryGetValue(endNode.Node, out var nodeState) &&
+            (nodeState is NodeCardState.FaceUp || nodeState is NodeCardState.SectorCore))
+        {
+            // Skip if origin is the same node (cards started-on don't activate).
+            bool startedOnSameNode =
+                st.Origin is ShipLocation.OnNode origNode && origNode.Node == endNode.Node;
+            if (!startedOnSameNode)
+            {
+                if (st.PendingActivationNode is null)
+                {
+                    st.PendingActivationNode = endNode.Node;
+                    st.PendingActivationLoc = finalLoc;
+                    st.PendingActivationBonus = st.ChosenCount;
+                }
+                else if (st.PendingActivationNode == endNode.Node)
+                {
+                    // Convergence — accumulate bonus gems from this fleet.
+                    st.PendingActivationBonus += st.ChosenCount;
+                }
+                // Different node shouldn't happen with rulebook-correct
+                // convergence enforcement; if it does, stick with first.
+            }
+        }
+        return CompleteFleet(g, ctx, st);
     }
 
     // Rulebook p.27/p.29: When transports end on a face-up sector card other
@@ -439,8 +493,28 @@ public sealed class CommandHandler : IEffectHandler
         if (st.Path is { Count: > 0 } pth)
             st.UsedOrigins.Add(KeyOf(pth[^1]));
         st.FleetIndex++;
-        if (g.IsGameOver || st.FleetIndex >= st.TotalFleets)
+        if (g.IsGameOver)
         {
+            st.Stage = Stage.Done;
+            ctx.IsComplete = true;
+            return true;
+        }
+        if (st.FleetIndex >= st.TotalFleets)
+        {
+            // All fleets done. If a multi-fleet activation was deferred,
+            // fire it now using the accumulated bonus from every transport
+            // fleet that converged on the activation card. Cruiser fleets
+            // have already resolved (their battles / patrol-through
+            // transport destruction completed inside ContinuePath), so the
+            // activation sees the final post-movement board state.
+            if (st.PendingActivationNode is not null && st.PendingActivationLoc is { } pendingLoc)
+            {
+                st.ChosenCount = st.PendingActivationBonus;
+                st.PendingActivationNode = null;
+                st.PendingActivationLoc = null;
+                st.PendingActivationBonus = 0;
+                return TryStartActivation(g, ctx, st, pendingLoc);
+            }
             st.Stage = Stage.Done;
             ctx.IsComplete = true;
             return true;

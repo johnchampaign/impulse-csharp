@@ -571,6 +571,106 @@ public class CommandHandlerTests
     }
 
     [Fact]
+    public void Multi_fleet_convergence_activates_destination_card_only_once()
+    {
+        // Designer ruling (Chris Cieslik / Asmadi, 2016-12-26 BGG):
+        // "The move-two-fleets card should move them both together to the
+        //  same card, activating it only once."
+        // Reproduces the convergence: two transport fleets land on the same
+        // face-up card via c75, which has FleetCount=2. The destination's
+        // activation log line must appear EXACTLY ONCE, not once per fleet.
+        // Use a registry with the activation handler installed so the
+        // destination card actually runs (otherwise we'd just see "no
+        // handler; skip"). Trade is a clean choice — its activation does
+        // a single observable action and doesn't cascade.
+        var r = new EffectRegistry();
+        CommandRegistrations.RegisterAll(r);
+        TradeRegistrations.RegisterAll(r);
+        var g = SetupFactory.NewGame(
+            new SetupOptions(2, Seed: 1,
+                InitialTransportsAtHome: 0,
+                InitialCruisersAtHomeGate: 0, AllNodesFaceUp: true,
+                InitialHandSize: 0),
+            r);
+        var p1 = new PlayerId(1);
+        // Pick a destination node we can place transports adjacent to from
+        // two different starting nodes. Bootstrap's home is N8 for a 2p
+        // game; we just need any 3 nodes A, dest, C such that both A and C
+        // are adjacent to dest.
+        var dest = g.Map.Nodes.First(n =>
+            !n.IsHome && !n.IsSectorCore &&
+            g.Map.AdjacencyByNode[n.Id].Count() >= 2).Id;
+        var adjGates = g.Map.AdjacencyByNode[dest].ToList();
+        var adjA = adjGates[0];
+        var adjC = adjGates[1];
+        var nodeA = g.Map.Gate(adjA.Id).EndpointA == dest
+            ? g.Map.Gate(adjA.Id).EndpointB : g.Map.Gate(adjA.Id).EndpointA;
+        var nodeC = g.Map.Gate(adjC.Id).EndpointA == dest
+            ? g.Map.Gate(adjC.Id).EndpointB : g.Map.Gate(adjC.Id).EndpointA;
+        Assert.NotEqual(nodeA, nodeC);
+
+        // Force dest to face-up Trade (simple, deterministic activation
+        // that always logs the "→ activating" line). Pick any Trade card.
+        int tradeCardId = g.CardsById.Values
+            .First(c => c.ActionType == Impulse.Core.Cards.CardActionType.Trade).Id;
+        g.NodeCards[dest] = new NodeCardState.FaceUp(tradeCardId);
+
+        // Two transports, one on each starting node.
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnNode(nodeA)));
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnNode(nodeC)));
+
+        var handler = new CommandHandler(r, CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 75); // FleetCount=2, MoveCount=1
+        bool tookFirst = false;
+        for (int safety = 0; safety < 50 && !ctx.IsComplete; safety++)
+        {
+            handler.Execute(g, ctx);
+            if (ctx.IsComplete) break;
+            if (ctx.PendingChoice is null) break;
+            switch (ctx.PendingChoice)
+            {
+                case SelectFleetRequest f:
+                    var origin = !tookFirst
+                        ? new ShipLocation.OnNode(nodeA)
+                        : new ShipLocation.OnNode(nodeC);
+                    tookFirst = true;
+                    f.Chosen = origin;
+                    break;
+                case SelectFleetSizeRequest sz: sz.Chosen = sz.Min; break;
+                case DeclareMoveRequest dm:
+                    dm.ChosenPath = dm.LegalPaths.First(p =>
+                        p.Count == 1 && p[0] is ShipLocation.OnNode n && n.Node == dest);
+                    break;
+                case SelectHandCardRequest h: h.ChosenCardId = null; break;
+                case SelectFromOptionsRequest opt: opt.Chosen = 0; break;
+                default:
+                    throw new Xunit.Sdk.XunitException(
+                        $"Unexpected: {ctx.PendingChoice.GetType().Name}");
+            }
+            ctx.Paused = false;
+        }
+
+        // Count activation events targeting `dest` — match either the
+        // success path ("activating #X on Y") or the fallback path
+        // ("activate #X (family): no handler; skip"). The point is to
+        // detect attempts, not the resolution of the activated effect.
+        int activations = g.Log.Lines
+            .Count(l => (l.Contains("activating #") || l.Contains("activate #")) &&
+                        l.Contains($"on {dest}") || l.Contains($"#{tradeCardId}"));
+        // Tighter check: filter to log lines mentioning either the dest
+        // node or the activated card id.
+        activations = g.Log.Lines.Count(l =>
+            (l.Contains("activating #") || (l.Contains("activate #") && l.Contains($"#{tradeCardId}"))) &&
+            (l.Contains($"on {dest}") || l.Contains($"#{tradeCardId}")));
+        if (activations != 1)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Expected exactly 1 activation, got {activations}. Log:\n  " +
+                string.Join("\n  ", g.Log.Lines));
+        }
+    }
+
+    [Fact]
     public void All_command_cards_have_params()
     {
         var cards = CardDataLoader.LoadAll();
