@@ -199,7 +199,7 @@ public sealed class AriekTechHandler : IEffectHandler
                             CommandHandler.FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
                             $"Multiple players patrol {passageNode} — choose who to fight.");
                         if (defender is null) return true; // paused for choice
-                        st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, attackerCount: 1, defender.Value);
+                        st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, toGate, passageNode, attackerCount: 1, defender.Value);
                         if (BattleResolver.Step(g, ctx, st.Battle))
                         { st.Battle = null; ctx.IsComplete = true; return true; }
                         return true;
@@ -456,7 +456,7 @@ public sealed class HerculeseTechHandler : IEffectHandler
                         CommandHandler.FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
                         $"Multiple players patrol {passageNode} — choose who to fight.");
                     if (defender is null) return true; // paused for choice
-                    st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, attackerCount: 1, defender.Value);
+                    st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, toGate, passageNode, attackerCount: 1, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     { st.Battle = null; ctx.IsComplete = true; return true; }
                     return true;

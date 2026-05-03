@@ -308,7 +308,7 @@ public sealed class CommandHandler : IEffectHandler
                         FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
                         $"Multiple players patrol {passageNode} — choose who to fight.");
                     if (defender is null) return true; // paused for choice
-                    st.Battle = SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, st.ChosenCount, defender.Value);
+                    st.Battle = SetupBattlePatrolThrough(g, ctx, fromGate, toGate, passageNode, st.ChosenCount, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     { st.Battle = null; return CompleteFleet(g, ctx, st); }
                     return true;
@@ -614,22 +614,27 @@ public sealed class CommandHandler : IEffectHandler
     }
 
     internal static BattleState SetupBattlePatrolThrough(GameState g, EffectContext ctx,
-        ShipLocation.OnGate fromGate, NodeId passageNode, int attackerCount,
-        PlayerId defender)
+        ShipLocation.OnGate fromGate, ShipLocation.OnGate toGate,
+        NodeId passageNode, int attackerCount, PlayerId defender)
     {
-        // Find any gate of `defender` adjacent to the passage node — battle
-        // happens at the patroller's gate. (Defender's choice of which of
-        // their gates to defend with isn't a rulebook concept; multiple
-        // gates of theirs touching the same card are equivalent for battle.)
-        var patrolGate = g.Map.AdjacencyByNode[passageNode]
-            .First(gate => g.ShipPlacements.Any(sp =>
-                sp.Owner == defender &&
-                sp.Location is ShipLocation.OnGate og && og.Gate == gate.Id));
+        // Battle happens at `toGate` — the destination the player actually
+        // chose. The path filter in Movement.Walk guarantees toGate already
+        // contains an enemy cruiser when the passage is patrolled, so this
+        // is a real attack. PassageNode is tracked separately so transports
+        // on the traversed card get destroyed when the attacker wins
+        // (rulebook p.28).
+        //
+        // Defender choice (multi-patroller scenarios) and toGate are
+        // independent concerns: with the path-filter rule, the player picks
+        // WHICH enemy gate to attack by clicking that gate; the defender
+        // candidates list is "all enemies on toGate" not "all enemies
+        // patrolling the passage." Net effect: clicking gate Y with enemy
+        // P5 on it always battles P5 at Y, never some other patroller.
         return new BattleState
         {
             Attacker = ctx.ActivatingPlayer,
             Defender = defender,
-            BattleGate = patrolGate.Id,
+            BattleGate = toGate.Gate,
             AttackerOrigin = fromGate,
             AttackerCruiserCount = attackerCount,
             PassageNode = passageNode,

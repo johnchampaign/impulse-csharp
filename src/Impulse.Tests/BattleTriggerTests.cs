@@ -368,6 +368,80 @@ public class BattleTriggerTests
     }
 
     [Fact]
+    public void Patrol_through_battle_uses_clicked_destination_not_first_patroller_gate()
+    {
+        // User-reported bug: the same defender held cruisers on TWO gates
+        // adjacent to a passage card. Player clicked one of those gates as
+        // their destination. Engine resolved the path to that gate (verified
+        // via ChosenPath log line), but the patrol-through battle setup
+        // re-derived the battle gate by `.First(...)` over the defender's
+        // gates adjacent to the passage — picking the lower gate id
+        // arbitrarily. The fleet ended up at the wrong gate after winning.
+        //
+        // Fix: SetupBattlePatrolThrough now takes `toGate` and uses it
+        // directly as the battle gate. The path filter in Movement.Walk
+        // already guarantees toGate has an enemy cruiser when the passage
+        // is patrolled.
+        var (g, _) = Bootstrap();
+        var p1 = new PlayerId(1);
+        var p2 = new PlayerId(2);
+        var p1Home = g.Map.HomeNodeIds[p1];
+        var startGate = g.Map.AdjacencyByNode[p1Home].First();
+        var passageNode = startGate.EndpointA == p1Home ? startGate.EndpointB : startGate.EndpointA;
+        // Find two distinct gates of the passage that aren't startGate.
+        var passageGates = g.Map.AdjacencyByNode[passageNode]
+            .Where(gt => gt.Id != startGate.Id).Take(2).ToList();
+        Assert.Equal(2, passageGates.Count);
+        // Assign P2 cruisers to BOTH gates. P1 will click the
+        // higher-id one (which is NOT the .First() — that's the bug).
+        var lowerIdGate = passageGates.OrderBy(g => g.Id.Value).First();
+        var higherIdGate = passageGates.OrderBy(g => g.Id.Value).Last();
+
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(startGate.Id)));
+        g.ShipPlacements.Add(new(p2, new ShipLocation.OnGate(lowerIdGate.Id)));
+        g.ShipPlacements.Add(new(p2, new ShipLocation.OnGate(higherIdGate.Id)));
+
+        // Stack the deck so P1 wins the battle deterministically.
+        var s3 = g.Deck.First(id => g.CardsById[id].Size == 3);
+        g.Deck.Remove(s3);
+        var s1 = g.Deck.First(id => g.CardsById[id].Size == 1);
+        g.Deck.Remove(s1);
+        g.Deck.Insert(0, s1);
+        g.Deck.Insert(1, s3);
+
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 31);
+        RunToCompletion(handler, g, ctx, choice =>
+        {
+            switch (choice)
+            {
+                case SelectFleetRequest f: f.Chosen = new ShipLocation.OnGate(startGate.Id); break;
+                case SelectFleetSizeRequest fs: fs.Chosen = fs.Min; break;
+                case DeclareMoveRequest m:
+                    // Click the HIGHER-id gate (the one .First() would NOT pick).
+                    m.ChosenPath = m.LegalPaths.First(p =>
+                        p.Count == 1 && p[0] is ShipLocation.OnGate og &&
+                        og.Gate == higherIdGate.Id);
+                    break;
+                case SelectHandCardRequest h: h.ChosenCardId = null; break;
+                case SelectFromOptionsRequest opt: opt.Chosen = 0; break;
+            }
+        });
+
+        // After winning, P1's cruiser should be on the gate the player CLICKED
+        // (higherIdGate), not the lower-id "first" gate.
+        Assert.Contains(g.ShipPlacements, sp =>
+            sp.Owner == p1 && sp.Location is ShipLocation.OnGate og && og.Gate == higherIdGate.Id);
+        // The defender's cruiser at the clicked gate is destroyed.
+        Assert.DoesNotContain(g.ShipPlacements, sp =>
+            sp.Owner == p2 && sp.Location is ShipLocation.OnGate og && og.Gate == higherIdGate.Id);
+        // The other defender cruiser (lower-id gate) survives — we didn't
+        // attack that one.
+        Assert.Contains(g.ShipPlacements, sp =>
+            sp.Owner == p2 && sp.Location is ShipLocation.OnGate og && og.Gate == lowerIdGate.Id);
+    }
+
+    [Fact]
     public void Patrol_through_battle_lost_does_not_destroy_third_party_transports()
     {
         // Mirror of above: P1 LOSES the patrol-through battle. P3's transports

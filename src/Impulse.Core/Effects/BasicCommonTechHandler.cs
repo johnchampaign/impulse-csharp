@@ -330,7 +330,7 @@ public sealed class BasicCommonTechHandler : IEffectHandler
                         CommandHandler.FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
                         $"Multiple players patrol {passageNode} — choose who to fight.");
                     if (defender is null) return true; // paused for choice
-                    st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, st.ChosenCount, defender.Value);
+                    st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, toGate, passageNode, st.ChosenCount, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     {
                         st.Battle = null;
