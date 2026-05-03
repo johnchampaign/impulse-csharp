@@ -195,14 +195,22 @@ public sealed class AriekTechHandler : IEffectHandler
                     if (pass is { } passageNode &&
                         Movement.IsPatrolledByEnemy(g, ctx.ActivatingPlayer, passageNode))
                     {
-                        st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, attackerCount: 1);
+                        var defender = DefenderChoice.Resolve(g, ctx,
+                            CommandHandler.FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
+                            $"Multiple players patrol {passageNode} — choose who to fight.");
+                        if (defender is null) return true; // paused for choice
+                        st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, attackerCount: 1, defender.Value);
                         if (BattleResolver.Step(g, ctx, st.Battle))
                         { st.Battle = null; ctx.IsComplete = true; return true; }
                         return true;
                     }
                     if (Movement.HasEnemyCruiserOnGate(g, ctx.ActivatingPlayer, toGate.Gate))
                     {
-                        st.Battle = CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, attackerCount: 1);
+                        var defender = DefenderChoice.Resolve(g, ctx,
+                            CommandHandler.FindEnemiesOnGate(g, ctx.ActivatingPlayer, toGate.Gate),
+                            $"Multiple players have cruisers on {toGate.Gate} — choose who to fight.");
+                        if (defender is null) return true; // paused for choice
+                        st.Battle = CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, attackerCount: 1, defender.Value);
                         if (BattleResolver.Step(g, ctx, st.Battle))
                         { st.Battle = null; ctx.IsComplete = true; return true; }
                         return true;
@@ -444,14 +452,22 @@ public sealed class HerculeseTechHandler : IEffectHandler
                 if (pass is { } passageNode &&
                     Movement.IsPatrolledByEnemy(g, ctx.ActivatingPlayer, passageNode))
                 {
-                    st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, attackerCount: 1);
+                    var defender = DefenderChoice.Resolve(g, ctx,
+                        CommandHandler.FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
+                        $"Multiple players patrol {passageNode} — choose who to fight.");
+                    if (defender is null) return true; // paused for choice
+                    st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, attackerCount: 1, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     { st.Battle = null; ctx.IsComplete = true; return true; }
                     return true;
                 }
                 if (Movement.HasEnemyCruiserOnGate(g, ctx.ActivatingPlayer, toGate.Gate))
                 {
-                    st.Battle = CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, attackerCount: 1);
+                    var defender = DefenderChoice.Resolve(g, ctx,
+                        CommandHandler.FindEnemiesOnGate(g, ctx.ActivatingPlayer, toGate.Gate),
+                        $"Multiple players have cruisers on {toGate.Gate} — choose who to fight.");
+                    if (defender is null) return true; // paused for choice
+                    st.Battle = CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, attackerCount: 1, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     { st.Battle = null; ctx.IsComplete = true; return true; }
                     return true;

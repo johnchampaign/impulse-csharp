@@ -292,14 +292,22 @@ public sealed class CommandHandler : IEffectHandler
                 if (pass is { } passageNode &&
                     Movement.IsPatrolledByEnemy(g, ctx.ActivatingPlayer, passageNode))
                 {
-                    st.Battle = SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, st.ChosenCount);
+                    var defender = DefenderChoice.Resolve(g, ctx,
+                        FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
+                        $"Multiple players patrol {passageNode} — choose who to fight.");
+                    if (defender is null) return true; // paused for choice
+                    st.Battle = SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, st.ChosenCount, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     { st.Battle = null; return CompleteFleet(g, ctx, st); }
                     return true;
                 }
                 if (Movement.HasEnemyCruiserOnGate(g, ctx.ActivatingPlayer, toGate.Gate))
                 {
-                    st.Battle = SetupBattleMoveOnto(g, ctx, fromGate, toGate, st.ChosenCount);
+                    var defender = DefenderChoice.Resolve(g, ctx,
+                        FindEnemiesOnGate(g, ctx.ActivatingPlayer, toGate.Gate),
+                        $"Multiple players have cruisers on {toGate.Gate} — choose who to fight.");
+                    if (defender is null) return true; // paused for choice
+                    st.Battle = SetupBattleMoveOnto(g, ctx, fromGate, toGate, st.ChosenCount, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     { st.Battle = null; return CompleteFleet(g, ctx, st); }
                     return true;
@@ -519,13 +527,9 @@ public sealed class CommandHandler : IEffectHandler
         };
 
     internal static BattleState SetupBattleMoveOnto(GameState g, EffectContext ctx,
-        ShipLocation.OnGate fromGate, ShipLocation.OnGate toGate, int attackerCount)
+        ShipLocation.OnGate fromGate, ShipLocation.OnGate toGate, int attackerCount,
+        PlayerId defender)
     {
-        // Defender = first enemy with cruiser on the destination gate.
-        var defender = g.ShipPlacements
-            .First(sp => sp.Owner != ctx.ActivatingPlayer &&
-                         sp.Location is ShipLocation.OnGate og && og.Gate == toGate.Gate)
-            .Owner;
         return new BattleState
         {
             Attacker = ctx.ActivatingPlayer,
@@ -537,17 +541,17 @@ public sealed class CommandHandler : IEffectHandler
     }
 
     internal static BattleState SetupBattlePatrolThrough(GameState g, EffectContext ctx,
-        ShipLocation.OnGate fromGate, NodeId passageNode, int attackerCount)
+        ShipLocation.OnGate fromGate, NodeId passageNode, int attackerCount,
+        PlayerId defender)
     {
-        // Defender = first enemy with cruiser on a gate of the patrolled card.
+        // Find any gate of `defender` adjacent to the passage node — battle
+        // happens at the patroller's gate. (Defender's choice of which of
+        // their gates to defend with isn't a rulebook concept; multiple
+        // gates of theirs touching the same card are equivalent for battle.)
         var patrolGate = g.Map.AdjacencyByNode[passageNode]
             .First(gate => g.ShipPlacements.Any(sp =>
-                sp.Owner != ctx.ActivatingPlayer &&
+                sp.Owner == defender &&
                 sp.Location is ShipLocation.OnGate og && og.Gate == gate.Id));
-        var defender = g.ShipPlacements
-            .First(sp => sp.Owner != ctx.ActivatingPlayer &&
-                         sp.Location is ShipLocation.OnGate og && og.Gate == patrolGate.Id)
-            .Owner;
         return new BattleState
         {
             Attacker = ctx.ActivatingPlayer,
@@ -558,6 +562,32 @@ public sealed class CommandHandler : IEffectHandler
             PassageNode = passageNode,
         };
     }
+
+    // Find all distinct enemy players who patrol `passageNode` (have a
+    // cruiser on any gate touching it).
+    internal static List<PlayerId> FindPatrollers(GameState g, PlayerId mover, NodeId passageNode)
+    {
+        var result = new HashSet<PlayerId>();
+        foreach (var gate in g.Map.AdjacencyByNode[passageNode])
+            foreach (var sp in g.ShipPlacements)
+                if (sp.Owner != mover &&
+                    sp.Location is ShipLocation.OnGate og && og.Gate == gate.Id)
+                    result.Add(sp.Owner);
+        return result.OrderBy(p => p.Value).ToList();
+    }
+
+    // Find all distinct enemy players with a cruiser on the given gate.
+    internal static List<PlayerId> FindEnemiesOnGate(GameState g, PlayerId mover, GateId gate)
+    {
+        return g.ShipPlacements
+            .Where(sp => sp.Owner != mover &&
+                         sp.Location is ShipLocation.OnGate og && og.Gate == gate)
+            .Select(sp => sp.Owner)
+            .Distinct()
+            .OrderBy(p => p.Value)
+            .ToList();
+    }
+
 
     private static void DestroyEnemyTransportsOn(GameState g, PlayerId mover, NodeId node)
     {

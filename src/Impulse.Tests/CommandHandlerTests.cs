@@ -361,6 +361,96 @@ public class CommandHandlerTests
     }
 
     [Fact]
+    public void Patrol_through_with_multiple_patrollers_prompts_attacker_to_choose()
+    {
+        // Rulebook p.29: "If multiple players patrol the same card, the
+        // player moving ships can choose who to fight." Reproduce: P1 has a
+        // cruiser on a gate of node X, two enemies (P2 and P3) patrol X via
+        // different gates. P1 commands their cruiser through X (toward an
+        // unoccupied gate). The handler must prompt P1 with both P2 and P3
+        // as options, NOT silently pick the first.
+        var (g, _) = Bootstrap();
+        var p1 = new PlayerId(1);
+        var p2 = new PlayerId(2);
+        // Find a node with 3+ gates so we can place P1, P2, P3, and a target.
+        var node = g.Map.Nodes.First(n =>
+            !n.IsHome && !n.IsSectorCore &&
+            g.Map.AdjacencyByNode[n.Id].Count() >= 3);
+        var gates = g.Map.AdjacencyByNode[node.Id].ToList();
+        // P1 cruiser on gates[0]; P2 cruiser on gates[1]; P3 cruiser on gates[2].
+        // Need at least 2 enemies — game has 2 players in Bootstrap, so add a
+        // 3rd enemy by mocking a placement for player 3 (Bootstrap creates
+        // 2 players; for this test we just need 2 enemies, so use P2 + a
+        // synthetic third placement for P2 won't work — we need distinct
+        // owners. Re-bootstrap with 3 players.)
+        var r = new EffectRegistry();
+        CommandRegistrations.RegisterAll(r);
+        g = SetupFactory.NewGame(
+            new SetupOptions(3, Seed: 1,
+                InitialTransportsAtHome: 0,
+                InitialCruisersAtHomeGate: 0, AllNodesFaceUp: true,
+                InitialHandSize: 0),
+            r);
+        var p3 = new PlayerId(3);
+        node = g.Map.Nodes.First(n =>
+            !n.IsHome && !n.IsSectorCore &&
+            g.Map.AdjacencyByNode[n.Id].Count() >= 3);
+        gates = g.Map.AdjacencyByNode[node.Id].ToList();
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(gates[0].Id)));
+        g.ShipPlacements.Add(new(new PlayerId(2), new ShipLocation.OnGate(gates[1].Id)));
+        g.ShipPlacements.Add(new(p3, new ShipLocation.OnGate(gates[2].Id)));
+
+        // c75 is "command 2 fleets up to 12, 1 move apiece" — but we want a
+        // single-fleet 1-move command. Use c31 (cruiser 1 fleet, 1 move).
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 31);
+
+        // Resolve: pick P1's cruiser as the fleet, declare path through node.
+        // Drain prompts until we hit either a SelectFromOptionsRequest
+        // (defender choice — the bug fix) or completion.
+        SelectFromOptionsRequest? defenderPrompt = null;
+        bool completed = false;
+        for (int safety = 0; safety < 20 && !completed; safety++)
+        {
+            handler.Execute(g, ctx);
+            if (ctx.IsComplete) { completed = true; break; }
+            if (ctx.PendingChoice is null) break;
+            switch (ctx.PendingChoice)
+            {
+                case SelectFleetRequest f:
+                    f.Chosen = new ShipLocation.OnGate(gates[0].Id);
+                    break;
+                case SelectFleetSizeRequest sz:
+                    sz.Chosen = sz.Min;
+                    break;
+                case DeclareMoveRequest dm:
+                    // Pick a path that passes through `node` (any path of
+                    // length 1 ending on gates[1] or gates[2] will pass
+                    // through node since gates[0] also touches node).
+                    var path = dm.LegalPaths.FirstOrDefault(p =>
+                        p.Count == 1 && p[0] is ShipLocation.OnGate og &&
+                        (og.Gate == gates[1].Id || og.Gate == gates[2].Id));
+                    Assert.NotNull(path);
+                    dm.ChosenPath = path;
+                    break;
+                case SelectFromOptionsRequest opt:
+                    defenderPrompt = opt;
+                    completed = true; // we got the prompt — stop
+                    break;
+                default:
+                    throw new Xunit.Sdk.XunitException($"Unexpected: {ctx.PendingChoice.GetType().Name}");
+            }
+            ctx.Paused = false;
+        }
+
+        Assert.NotNull(defenderPrompt);
+        // Both P2 and P3 should be options.
+        Assert.Equal(2, defenderPrompt!.Options.Count);
+        Assert.Contains("P2", string.Join(" ", defenderPrompt.Options));
+        Assert.Contains("P3", string.Join(" ", defenderPrompt.Options));
+    }
+
+    [Fact]
     public void All_command_cards_have_params()
     {
         var cards = CardDataLoader.LoadAll();

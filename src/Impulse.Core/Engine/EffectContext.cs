@@ -33,4 +33,10 @@ public sealed class EffectContext
     // transports landing on a Command card move more transports onto
     // another Command card, repeating.
     public int ActivationDepth { get; init; } = 0;
+    // Set non-null while a handler is awaiting the attacker's choice of
+    // defender among multiple eligible enemies (rulebook p.29: "If multiple
+    // players patrol the same card, the player moving ships can choose who
+    // to fight"). The handler stores the candidate list here when it sets
+    // PendingChoice, and consumes it on resume.
+    public List<PlayerId>? PendingDefenderCandidates { get; set; }
 }

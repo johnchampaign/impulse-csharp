@@ -326,7 +326,11 @@ public sealed class BasicCommonTechHandler : IEffectHandler
                 if (pass is { } passageNode &&
                     Movement.IsPatrolledByEnemy(g, ctx.ActivatingPlayer, passageNode))
                 {
-                    st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, st.ChosenCount);
+                    var defender = DefenderChoice.Resolve(g, ctx,
+                        CommandHandler.FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
+                        $"Multiple players patrol {passageNode} — choose who to fight.");
+                    if (defender is null) return true; // paused for choice
+                    st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, passageNode, st.ChosenCount, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     {
                         st.Battle = null;
@@ -338,7 +342,11 @@ public sealed class BasicCommonTechHandler : IEffectHandler
                 }
                 if (Movement.HasEnemyCruiserOnGate(g, ctx.ActivatingPlayer, toGate.Gate))
                 {
-                    st.Battle = CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, st.ChosenCount);
+                    var defender = DefenderChoice.Resolve(g, ctx,
+                        CommandHandler.FindEnemiesOnGate(g, ctx.ActivatingPlayer, toGate.Gate),
+                        $"Multiple players have cruisers on {toGate.Gate} — choose who to fight.");
+                    if (defender is null) return true; // paused for choice
+                    st.Battle = CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, st.ChosenCount, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     {
                         st.Battle = null;
