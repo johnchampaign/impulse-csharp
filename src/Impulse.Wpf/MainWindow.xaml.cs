@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using IOPath = System.IO.Path;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -449,6 +450,131 @@ public partial class MainWindow : Window
     private void LoadStateButton_Click(object sender, RoutedEventArgs e)
     {
         ShowPasteCodecDialog();
+    }
+
+    // Endpoint for log submission. The deployed Cloudflare Worker accepts
+    // POST {log, version} JSON, hashes the log, and writes the bytes to the
+    // impulse-game-logs GitHub repo as logs/<sha256-prefix>.log. Duplicates
+    // are detected on the server (filename = content hash) so re-submitting
+    // existing logs is idempotent and free.
+    // To self-host: see SETUP-LOG-COLLECTION.md at the repo root.
+    private const string LogSubmitEndpoint =
+        "https://impulse-logs.johnchampaign.workers.dev/submit";
+
+    private async void SubmitLogsButton_Click(object sender, RoutedEventArgs e)
+    {
+        SubmitLogsButton.IsEnabled = false;
+        try
+        {
+            // Gather every impulse log file in %TEMP%: the active log file
+            // for the current game (so even an in-progress session can be
+            // shared) plus all archived per-game files.
+            var temp = IOPath.GetTempPath();
+            var paths = new List<string>();
+            paths.AddRange(Directory.GetFiles(temp, "impulse-game-*.log"));
+            var last = IOPath.Combine(temp, "impulse-last-game.log");
+            if (File.Exists(last)) paths.Add(last);
+            var prev = IOPath.Combine(temp, "impulse-prev-game.log");
+            if (File.Exists(prev)) paths.Add(prev);
+            // Drop duplicates by full path; cap by size sanity (skip empty
+            // stub logs that are just header lines, and absurdly large ones).
+            paths = paths.Distinct().Where(p =>
+            {
+                try { var len = new FileInfo(p).Length; return len > 200 && len < 5_000_000; }
+                catch { return false; }
+            }).ToList();
+
+            if (paths.Count == 0)
+            {
+                MessageBox.Show(this,
+                    "No game logs found to submit.",
+                    "Submit logs", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var consent = MessageBox.Show(this,
+                $"You are about to submit {paths.Count} game log(s) to a PUBLIC dataset " +
+                "hosted on GitHub.\n\n" +
+                "What gets sent:\n" +
+                "  • Every action taken in each game (moves, card plays, choices)\n" +
+                "  • Hand contents and card draws (the full random state of each turn)\n" +
+                "  • Final scores and winners\n\n" +
+                "What is NOT sent:\n" +
+                "  • Your name, email, or any account information\n" +
+                "  • Files outside the Impulse log folder\n\n" +
+                "Anyone (including AI researchers) can use the dataset to improve " +
+                "Impulse AIs. Duplicate uploads are deduplicated server-side, so " +
+                "clicking Submit again later only sends NEW logs.\n\n" +
+                "Submit?",
+                "Submit logs to public dataset",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (consent != MessageBoxResult.Yes) return;
+
+            int newlySubmitted = 0, alreadyOnServer = 0, failed = 0;
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            string version = typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "unknown";
+            foreach (var path in paths)
+            {
+                try
+                {
+                    string content = File.ReadAllText(path);
+                    // Strip the local-file-path header line (which would leak
+                    // the user's Windows username) before submitting.
+                    content = StripLocalPathHeader(content);
+                    var body = new
+                    {
+                        log = content,
+                        version,
+                        os = "windows",
+                    };
+                    var json = System.Text.Json.JsonSerializer.Serialize(body);
+                    var resp = await http.PostAsync(LogSubmitEndpoint,
+                        new StringContent(json, System.Text.Encoding.UTF8, "application/json"));
+                    if (resp.IsSuccessStatusCode)
+                    {
+                        var respText = await resp.Content.ReadAsStringAsync();
+                        if (respText.Contains("\"duplicate\":true", StringComparison.OrdinalIgnoreCase))
+                            alreadyOnServer++;
+                        else
+                            newlySubmitted++;
+                    }
+                    else
+                    {
+                        failed++;
+                    }
+                }
+                catch
+                {
+                    failed++;
+                }
+            }
+
+            string summary = $"Submitted: {newlySubmitted} new log(s).\n" +
+                             $"Already on server: {alreadyOnServer}.";
+            if (failed > 0) summary += $"\nFailed: {failed}.";
+            MessageBox.Show(this, summary,
+                "Submit logs",
+                MessageBoxButton.OK,
+                failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+        }
+        finally
+        {
+            SubmitLogsButton.IsEnabled = true;
+        }
+    }
+
+    // Removes the "# log file: C:\Users\<username>\..." header line, which
+    // is the only place the local Windows username appears in the log.
+    private static string StripLocalPathHeader(string content)
+    {
+        var lines = content.Split('\n');
+        var keep = new List<string>(lines.Length);
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("# log file:", StringComparison.Ordinal)) continue;
+            keep.Add(line);
+        }
+        return string.Join('\n', keep);
     }
 
     // Variant called from the lobby: closes the given lobby on success.

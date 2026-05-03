@@ -34,10 +34,15 @@
                             Background="{StaticResource BgPanel2}" Foreground="{StaticResource FgPrimary}"
                             BorderBrush="{StaticResource Accent}" BorderThickness="1"
                             Click="SeeLogButton_Click"/>
-                    <Button x:Name="LoadStateButton" Content="LOAD STATE" Padding="8,2"
+                    <Button x:Name="LoadStateButton" Content="LOAD STATE" Padding="8,2" Margin="0,0,6,0"
                             Background="{StaticResource BgPanel2}" Foreground="{StaticResource FgPrimary}"
                             BorderBrush="{StaticResource Accent}" BorderThickness="1"
                             Click="LoadStateButton_Click"/>
+                    <Button x:Name="SubmitLogsButton" Content="SUBMIT LOGS" Padding="8,2"
+                            Background="{StaticResource BgPanel2}" Foreground="{StaticResource FgPrimary}"
+                            BorderBrush="{StaticResource Accent}" BorderThickness="1"
+                            Click="SubmitLogsButton_Click"
+                            ToolTip="Submit your game logs to a public dataset for AI training."/>
                 </StackPanel>
             </DockPanel>
         </Border>

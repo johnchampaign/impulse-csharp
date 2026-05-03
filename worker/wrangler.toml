@@ -1,0 +1,10 @@
+name = "impulse-logs"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Configure these to point at YOUR GitHub repo.
+# GITHUB_TOKEN is a secret — set via `wrangler secret put GITHUB_TOKEN`.
+[vars]
+GH_OWNER = "johnchampaign"
+GH_REPO = "impulse-game-logs"
+GH_BRANCH = "main"
