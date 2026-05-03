@@ -992,7 +992,9 @@ public partial class MainWindow : Window
         }
         else
         {
-            // Unknown — submit the first legal action as a stub.
+            // Defensive fallback: if a new PlayerAction variant is ever
+            // added without a corresponding UI prompt above, submit the
+            // first legal one so the engine doesn't deadlock.
             _human.SubmitAction(legal[0]);
         }
     }

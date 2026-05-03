@@ -177,7 +177,10 @@ public sealed class GameRunner
                     };
                     if (handler is null)
                     {
-                        _g.Log.Write($"  → BasicUnique({bu.Race.Name}) effect deferred (requires exploration)");
+                        // Defensive: every Race.Id 1-6 has a handler above.
+                        // This branch is unreachable in practice; logged so
+                        // a future race addition without a handler is loud.
+                        _g.Log.Write($"  → BasicUnique({bu.Race.Name}) has no registered handler; skipping");
                         return;
                     }
                     var ctx = new EffectContext
