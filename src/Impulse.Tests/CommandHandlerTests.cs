@@ -296,6 +296,71 @@ public class CommandHandlerTests
     }
 
     [Fact]
+    public void Multi_fleet_allows_mixing_transport_and_cruiser_to_same_card()
+    {
+        // Reproduces the user-reported bug: c75 (FleetCount=2, Either, 1 move).
+        // Transport adjacent to Sector Core + Cruiser on a Sector-Core gate.
+        // Both should be able to move "to the same card" (the Sector Core):
+        // transport → SC node, cruiser → a different SC gate.
+        // Rulebook p.29 explicitly allows mixing one transport + one cruiser.
+        var (g, _) = Bootstrap();
+        var p1 = new PlayerId(1);
+        var sc = g.Map.SectorCoreNodeId;
+        var scGates = g.Map.AdjacencyByNode[sc].ToList();
+        // Pick two distinct SC gates. The cruiser starts on gateC1, will move
+        // through SC to gateC2.
+        var gateC1 = scGates[0];
+        var gateC2 = scGates[1];
+        // Transport adjacent to SC: take the OTHER endpoint of gateC1 (non-SC).
+        var gateC1Info = g.Map.Gate(gateC1.Id);
+        var transportNode = gateC1Info.EndpointA == sc ? gateC1Info.EndpointB : gateC1Info.EndpointA;
+
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnNode(transportNode)));
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(gateC2.Id)));
+
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 75);
+
+        // Fleet 1: pick transport, move to SC.
+        handler.Execute(g, ctx);
+        var f1 = (SelectFleetRequest)ctx.PendingChoice!;
+        Assert.Contains(f1.LegalLocations, l => l is ShipLocation.OnNode n && n.Node == transportNode);
+        f1.Chosen = new ShipLocation.OnNode(transportNode);
+        ctx.Paused = false;
+        handler.Execute(g, ctx);
+        if (ctx.PendingChoice is SelectFleetSizeRequest size1)
+        {
+            size1.Chosen = 1;
+            ctx.Paused = false;
+            handler.Execute(g, ctx);
+        }
+        var p1Path = (DeclareMoveRequest)ctx.PendingChoice!;
+        var pathToSc = p1Path.LegalPaths.First(p => p[^1] is ShipLocation.OnNode n && n.Node == sc);
+        p1Path.ChosenPath = pathToSc;
+        ctx.Paused = false;
+        handler.Execute(g, ctx);
+
+        // Drain any intermediate prompts (e.g. SC mineral-color choice
+        // when transport lands on Sector Core, or SelectFleetSize) until
+        // the next SelectFleetRequest for fleet 2.
+        while (ctx.PendingChoice is not null && ctx.PendingChoice is not SelectFleetRequest)
+        {
+            switch (ctx.PendingChoice)
+            {
+                case SelectFleetSizeRequest sz: sz.Chosen = sz.Min; break;
+                case SelectFromOptionsRequest opt: opt.Chosen = 0; break;
+                default: throw new Xunit.Sdk.XunitException($"Unexpected prompt: {ctx.PendingChoice.GetType().Name}");
+            }
+            ctx.Paused = false;
+            handler.Execute(g, ctx);
+        }
+        var f2 = (SelectFleetRequest)ctx.PendingChoice!;
+        Assert.True(
+            f2.LegalLocations.Any(l => l is ShipLocation.OnGate g2 && g2.Gate == gateC2.Id),
+            $"Cruiser on SC gate {gateC2.Id} should be a legal fleet-2 origin after fleet 1 converged on SC. Legal: [{string.Join(",", f2.LegalLocations.Select(Mechanics.LocStr))}]");
+    }
+
+    [Fact]
     public void All_command_cards_have_params()
     {
         var cards = CardDataLoader.LoadAll();

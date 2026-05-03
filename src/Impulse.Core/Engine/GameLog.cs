@@ -30,8 +30,11 @@ public sealed class GameLog : IDisposable
     public bool Suppressed { get; set; }
     public string? FilePath { get; private set; }
 
-    /// Default log file location. Previous game is rotated to *-prev-game.log
-    /// so the last two games are always available.
+    /// Default log file location. The active game writes here. On a new
+    /// game, the previous file is archived to `impulse-game-<timestamp>.log`
+    /// (timestamp = the previous file's last-write time) so the full history
+    /// of past games is preserved. `impulse-prev-game.log` is also kept as a
+    /// convenience alias for the immediately-previous game.
     public static string DefaultPath =>
         Path.Combine(Path.GetTempPath(), "impulse-last-game.log");
 
@@ -43,11 +46,19 @@ public sealed class GameLog : IDisposable
         path ??= DefaultPath;
         FilePath = path;
 
-        // Rotate: move existing -last-game to -prev-game.
+        // Rotate: archive the existing -last-game with a timestamped name
+        // (so we keep ALL prior games, not just the previous one), then
+        // also update -prev-game.log as the immediate-previous alias.
         try
         {
             if (File.Exists(path))
             {
+                var archiveStamp = File.GetLastWriteTime(path).ToString("yyyyMMdd-HHmmss");
+                var archivePath = Path.Combine(
+                    Path.GetTempPath(),
+                    $"impulse-game-{archiveStamp}.log");
+                if (File.Exists(archivePath)) File.Delete(archivePath);
+                File.Copy(path, archivePath);
                 if (File.Exists(PreviousPath)) File.Delete(PreviousPath);
                 File.Move(path, PreviousPath);
             }
