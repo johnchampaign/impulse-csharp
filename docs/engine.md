@@ -412,6 +412,90 @@ in some form* every slice — not just *correct in some sub-system*.
 
 ---
 
+## Documented rule interpretations
+
+Where the rulebook is silent or ambiguous, this section records the
+engine's interpretation as a deliberate design choice — not a bug —
+along with what evidence (rulebook text, designer ruling, BGG thread)
+supports it.
+
+### Multi-fleet Command: per-fleet sequential declaration
+
+Cards like c75 / c98 ("Command [N] fleets, each must move to the same
+card") let the player command multiple fleets in one action.
+
+**The engine resolves fleets sequentially**: pick fleet 1's origin,
+declare its full path, execute it (with battles, exploration, and
+transport destruction inline), then pick fleet 2's origin, declare its
+path with full knowledge of fleet 1's outcome, and so on.
+
+Implications visible to the player:
+- The result of one fleet's movement can change the legal options for
+  the next: e.g., a cruiser fleet that destroys a patrolling enemy
+  unblocks subsequent transport movement to that card.
+- Mid-path exploration on fleet 1 can reveal information that
+  influences fleet 2's path.
+- The player's choice of fleet order matters strategically.
+
+**Why this interpretation:**
+- p.31 ("you must declare your entire movement before [exploring]")
+  applies *per fleet*, not across all fleets in a multi-fleet command.
+- p.29 ("If moving Transports, all move together and activate the card
+  once") describes convergence, not predeclaration. The "once"
+  clause is now implemented (commit `70648db`).
+- p.31 ("each fleet could move to a different gate") implies a
+  per-fleet decision.
+- No rulebook text mandates predeclaration of all fleet paths up front.
+
+**The strict alternative** would predeclare every fleet's path before
+any execution, with explorations resolved during the combined
+execution phase. That's not implemented. Open questions if we ever
+switch to it: how to handle fleet 1's predeclared path becoming
+invalid after fleet 2 (or some upstream effect) changes the board?
+The natural answer would be "abort fleet 1's path at the first
+illegal step," but it's awkward. The sequential interpretation has
+neither this complexity nor the player-information question.
+
+If a designer ruling or community consensus arrives that locks in the
+strict interpretation, switching is a contained refactor — replace
+the per-fleet `SelectFleetRequest → DeclareMoveRequest` loop with a
+single up-front `DeclareAllFleetsRequest` returning all paths, then
+execute them in order.
+
+### Multi-defender battle: attacker chooses (rulebook p.29 explicit)
+
+When a cruiser passes through a card patrolled by multiple enemies, or
+moves onto a gate shared by multiple enemies' cruisers, the rulebook
+explicitly says "the player moving ships can choose who to fight."
+Engine prompts via `SelectFromOptionsRequest` (`DefenderChoice.Resolve`).
+See commit `821402b`. Default-pick fallback when only one candidate
+exists; no prompt.
+
+### Patrol-through battle: destination must contain enemy
+
+A cruiser path step gate→gate via a card patrolled by enemy is only
+enumerated as a legal path if the destination gate has an enemy cruiser
+to fight. Empty-gate destinations through patrolled passages are not
+offered. There is no "redirect" — the engine never moves a fleet to a
+gate the player didn't explicitly select.
+
+Rationale: rulebook p.29 says "Enemy Cruisers cannot move through
+cards you patrol except to start a battle." A battle requires an enemy
+to fight. The destination IS the battle gate; there is no rulebook
+notion of attacking-enemy-on-different-gate-via-mid-passage. See
+commit `9b11067`.
+
+### Patrol-through transport destruction: ALL non-attacker transports
+
+When a cruiser wins a battle that traversed a patrolled card, ALL
+non-attacker transports on the passage card are destroyed (not just
+the defender's). BGG community ruling 2017-06-23 thread 1801001
+confirms this: "all transports that are traversed over will be
+eliminated. That includes transports belonging to a third player that
+isn't participating in the battle." See commit `3107052`.
+
+---
+
 ## What this doc deliberately omits
 
 - Card-family handler list — generated from `cards.tsv` during the TSV
