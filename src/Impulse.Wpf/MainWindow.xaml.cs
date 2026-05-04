@@ -2219,6 +2219,24 @@ public partial class MainWindow : Window
         });
         border.Child = stack;
         HookCardHover(border, c);
+        // Plan cards are normally non-interactive, but research-from-Plan
+        // prompts (c101) put plan card IDs in `_legalHandCardIds`. When
+        // the prompt is active and this card is in that set, make it
+        // clickable and route the click to `_onHandCardClick` (which is
+        // the same callback the hand-panel uses) so the picker just works.
+        if (!resolving && _legalHandCardIds is not null &&
+            _legalHandCardIds.Contains(cardId) && _onHandCardClick is not null)
+        {
+            border.BorderBrush = (Brush)FindResource("Accent");
+            border.BorderThickness = new Thickness(3);
+            border.Cursor = Cursors.Hand;
+            int captured = cardId;
+            border.MouseLeftButtonDown += (_, e) =>
+            {
+                _onHandCardClick?.Invoke(captured);
+                e.Handled = true;
+            };
+        }
         return border;
     }
 

@@ -4,7 +4,7 @@ using Impulse.Core.Players;
 
 namespace Impulse.Core.Effects;
 
-public enum ResearchSource { Hand, Deck }
+public enum ResearchSource { Hand, Deck, Plan }
 public enum ResearchBoostTarget { Count, Size }
 
 public sealed record ResearchParams(
@@ -108,6 +108,10 @@ public sealed class ResearchHandler : IEffectHandler
                     g.Discard.Add(cardId);
                     g.Log.Write($"  → research skipped — #{cardId} discarded");
                 }
+                else if (prms.Source == ResearchSource.Plan)
+                {
+                    g.Log.Write($"  → research skipped — #{cardId} stays in plan");
+                }
                 else
                 {
                     g.Log.Write($"  → research skipped — #{cardId} stays in hand");
@@ -126,6 +130,13 @@ public sealed class ResearchHandler : IEffectHandler
             {
                 if (!p.Hand.Remove(cardId))
                     throw new InvalidOperationException($"hand missing #{cardId}");
+            }
+            else if (prms.Source == ResearchSource.Plan)
+            {
+                // List.Remove preserves the order of remaining items, which
+                // matches "leaving the other cards in the same order" (c101).
+                if (!p.Plan.Remove(cardId))
+                    throw new InvalidOperationException($"plan missing #{cardId}");
             }
             // (deck source: card was already removed when drawn)
 
@@ -179,20 +190,23 @@ public sealed class ResearchHandler : IEffectHandler
 
         if (st.Remaining <= 0) { ctx.IsComplete = true; return true; }
 
-        // Begin or continue: hand source prompts for hand pick; deck source
-        // draws the next top card.
-        if (prms.Source == ResearchSource.Hand)
+        // Begin or continue: hand source prompts for hand pick; plan source
+        // prompts for plan pick (UI shows the player's Plan as the source);
+        // deck source draws the next top card.
+        if (prms.Source == ResearchSource.Hand || prms.Source == ResearchSource.Plan)
         {
-            var legal = p.Hand
+            var pool = prms.Source == ResearchSource.Hand ? p.Hand : p.Plan;
+            var legal = pool
                 .Where(id => Matches(g.CardsById[id], effectiveSize, prms.ColorFilter))
                 .ToList();
             if (legal.Count == 0) { ctx.IsComplete = true; return true; }
+            string fromWhat = prms.Source == ResearchSource.Hand ? "hand" : "Plan";
             ctx.PendingChoice = new SelectHandCardRequest
             {
                 Player = ctx.ActivatingPlayer,
                 LegalCardIds = legal,
                 AllowNone = true,
-                Prompt = $"Research a card matching {Describe(effectiveSize, prms.ColorFilter)} ({st.Remaining} remaining), or DONE.",
+                Prompt = $"Research a card from your {fromWhat} matching {Describe(effectiveSize, prms.ColorFilter)} ({st.Remaining} remaining), or DONE.",
             };
             ctx.Paused = true;
             return false;
@@ -264,7 +278,7 @@ public static class ResearchRegistrations
         [18]  = new(Count: 1, SizeFilter: 1,    ColorFilter: null,            Source: ResearchSource.Hand, BoostTarget: ResearchBoostTarget.Size, ThenExecute: true),
         [54]  = new(Count: 1, SizeFilter: 1,    ColorFilter: null,            Source: ResearchSource.Hand, BoostTarget: ResearchBoostTarget.Size),
         [77]  = new(Count: 1, SizeFilter: 1,    ColorFilter: null,            Source: ResearchSource.Hand, BoostTarget: ResearchBoostTarget.Size),
-        [101] = new(Count: 1, SizeFilter: 1,    ColorFilter: null,            Source: ResearchSource.Hand, BoostTarget: ResearchBoostTarget.Size),
+        [101] = new(Count: 1, SizeFilter: 1,    ColorFilter: null,            Source: ResearchSource.Plan, BoostTarget: ResearchBoostTarget.Size),
         // "Research [1][color] card" → boost count.
         [20]  = new(Count: 1, SizeFilter: null, ColorFilter: CardColor.Green, Source: ResearchSource.Hand, BoostTarget: ResearchBoostTarget.Count),
         [60]  = new(Count: 1, SizeFilter: null, ColorFilter: CardColor.Yellow,Source: ResearchSource.Hand, BoostTarget: ResearchBoostTarget.Count),
