@@ -540,6 +540,18 @@ public sealed class CommandHandler : IEffectHandler
         if (legal.Count == 0)
         {
             g.Log.Write($"  → command: no legal origins for fleet {st.FleetIndex + 1}/{st.TotalFleets} (convergence: [{(st.ConvergenceSet is null ? "none" : string.Join(",", st.ConvergenceSet))}])");
+            // No more fleets can move, but if an earlier fleet queued a
+            // deferred activation we still need to fire it. Otherwise the
+            // player loses the SectorCore / face-up activation they paid
+            // for by getting transports onto the destination card.
+            if (st.PendingActivationNode is not null && st.PendingActivationLoc is { } pendingLoc)
+            {
+                st.ChosenCount = st.PendingActivationBonus;
+                st.PendingActivationNode = null;
+                st.PendingActivationLoc = null;
+                st.PendingActivationBonus = 0;
+                return TryStartActivation(g, ctx, st, pendingLoc);
+            }
             st.Stage = Stage.Done;
             ctx.IsComplete = true;
             return true;
