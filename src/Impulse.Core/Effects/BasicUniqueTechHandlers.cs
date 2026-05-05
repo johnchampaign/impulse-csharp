@@ -48,11 +48,12 @@ public sealed class PiscesishTechHandler : IEffectHandler
 // occupying or patrolling the Sector Core."
 public sealed class AriekTechHandler : IEffectHandler
 {
-    private enum Stage { Start, AwaitingFleet, AwaitingPath, Executing, AwaitingSectorCoreColor, Done }
+    private enum Stage { Start, AwaitingFleet, AwaitingCount, AwaitingPath, Executing, AwaitingSectorCoreColor, Done }
     private sealed class State
     {
         public Stage Stage;
         public ShipLocation? Origin;
+        public int ChosenCount;
         public IReadOnlyList<ShipLocation>? Path;
         public int PathStepIndex;
         public NodeId? ExplorationNode;
@@ -127,26 +128,34 @@ public sealed class AriekTechHandler : IEffectHandler
             var origin = req.Chosen;
             st.Origin = origin;
 
-            var paths = Movement.EnumeratePaths(g, ctx.ActivatingPlayer, origin, 1)
-                .Where(path => EndsAtCore(path[^1], coreId, coreGates))
-                .ToList();
-            if (paths.Count == 0)
+            // "Command one fleet" — a fleet can be multiple ships at the
+            // origin moving together. Prompt for fleet size when >1 ship
+            // is at the origin; auto-fill 1 otherwise.
+            int shipsHere = Mechanics.CountShipsAt(g, ctx.ActivatingPlayer, origin);
+            if (shipsHere > 1)
             {
-                g.Log.Write($"  → Ariek: no legal Sector Core path from origin");
-                ctx.IsComplete = true;
+                ctx.PendingChoice = new SelectFleetSizeRequest
+                {
+                    Player = ctx.ActivatingPlayer,
+                    Min = 1,
+                    Max = shipsHere,
+                    Prompt = $"How many ships to move? (1–{shipsHere})",
+                };
+                st.Stage = Stage.AwaitingCount;
+                ctx.Paused = true;
                 return true;
             }
-            ctx.PendingChoice = new DeclareMoveRequest
-            {
-                Player = ctx.ActivatingPlayer,
-                Origin = origin,
-                MaxMoves = 1,
-                LegalPaths = paths,
-                Prompt = "Move toward the Sector Core.",
-            };
-            st.Stage = Stage.AwaitingPath;
-            ctx.Paused = true;
-            return true;
+            st.ChosenCount = 1;
+            return BeginPath(g, ctx, st, origin, coreId, coreGates);
+        }
+
+        if (st.Stage == Stage.AwaitingCount)
+        {
+            var req = (SelectFleetSizeRequest)ctx.PendingChoice!;
+            int chosen = req.Chosen ?? throw new InvalidOperationException("fleet size not chosen");
+            ctx.PendingChoice = null;
+            st.ChosenCount = chosen;
+            return BeginPath(g, ctx, st, st.Origin!, coreId, coreGates);
         }
 
         if (st.Stage == Stage.AwaitingPath)
@@ -205,7 +214,7 @@ public sealed class AriekTechHandler : IEffectHandler
                             CommandHandler.FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
                             $"Multiple players patrol {passageNode} — choose who to fight.");
                         if (defender is null) return true; // paused for choice
-                        st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, toGate, passageNode, attackerCount: 1, defender.Value);
+                        st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, toGate, passageNode, st.ChosenCount, defender.Value);
                         if (BattleResolver.Step(g, ctx, st.Battle))
                         { st.Battle = null; ctx.IsComplete = true; return true; }
                         return true;
@@ -216,7 +225,7 @@ public sealed class AriekTechHandler : IEffectHandler
                             CommandHandler.FindEnemiesOnGate(g, ctx.ActivatingPlayer, toGate.Gate),
                             $"Multiple players have cruisers on {toGate.Gate} — choose who to fight.");
                         if (defender is null) return true; // paused for choice
-                        st.Battle = CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, attackerCount: 1, defender.Value);
+                        st.Battle = CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, st.ChosenCount, defender.Value);
                         if (BattleResolver.Step(g, ctx, st.Battle))
                         { st.Battle = null; ctx.IsComplete = true; return true; }
                         return true;
@@ -225,7 +234,8 @@ public sealed class AriekTechHandler : IEffectHandler
                         DestroyEnemyTransportsAt(g, ctx.ActivatingPlayer, pn2);
                     if (g.IsGameOver) { ctx.IsComplete = true; return true; }
                 }
-                Mechanics.MoveShip(g, ctx.ActivatingPlayer, here, step, g.Log);
+                for (int s = 0; s < st.ChosenCount; s++)
+                    Mechanics.MoveShip(g, ctx.ActivatingPlayer, here, step, g.Log);
                 here = step;
                 st.PathStepIndex++;
             }
@@ -276,6 +286,31 @@ public sealed class AriekTechHandler : IEffectHandler
             return true;
         }
         return false;
+    }
+
+    private static bool BeginPath(GameState g, EffectContext ctx, State st,
+        ShipLocation origin, NodeId coreId, IReadOnlySet<GateId> coreGates)
+    {
+        var paths = Movement.EnumeratePaths(g, ctx.ActivatingPlayer, origin, 1)
+            .Where(path => EndsAtCore(path[^1], coreId, coreGates))
+            .ToList();
+        if (paths.Count == 0)
+        {
+            g.Log.Write($"  → Ariek: no legal Sector Core path from origin");
+            ctx.IsComplete = true;
+            return true;
+        }
+        ctx.PendingChoice = new DeclareMoveRequest
+        {
+            Player = ctx.ActivatingPlayer,
+            Origin = origin,
+            MaxMoves = 1,
+            LegalPaths = paths,
+            Prompt = "Move toward the Sector Core.",
+        };
+        st.Stage = Stage.AwaitingPath;
+        ctx.Paused = true;
+        return true;
     }
 
     private static IReadOnlyList<ShipLocation> LegalOrigins(
