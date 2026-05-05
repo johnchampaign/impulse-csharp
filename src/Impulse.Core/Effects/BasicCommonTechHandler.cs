@@ -200,8 +200,14 @@ public sealed class BasicCommonTechHandler : IEffectHandler
         if (st.Stage == Stage.AwaitingFleet)
         {
             var req = (SelectFleetRequest)ctx.PendingChoice!;
-            var origin = req.Chosen ?? throw new InvalidOperationException("fleet not chosen");
             ctx.PendingChoice = null;
+            if (req.Chosen is null)
+            {
+                g.Log.Write($"  → BasicCommon: fleet skipped");
+                ctx.IsComplete = true;
+                return true;
+            }
+            var origin = req.Chosen;
             st.Origin = origin;
 
             int shipsHere = Mechanics.CountShipsAt(g, ctx.ActivatingPlayer, origin);

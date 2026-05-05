@@ -1160,7 +1160,9 @@ public partial class MainWindow : Window
         switch (request)
         {
             case SelectFleetRequest f:
-                PromptText.Text = "Click a node or gate to select your fleet's location.";
+                PromptText.Text = f.AllowSkip
+                    ? "Click a fleet to move, or SKIP."
+                    : "Click a node or gate to select your fleet's location.";
                 HighlightLocations(f.LegalLocations);
                 _onMapLocClick = loc =>
                 {
@@ -1170,6 +1172,16 @@ public partial class MainWindow : Window
                     _human.CompleteChoice();
                     return true;
                 };
+                if (f.AllowSkip)
+                {
+                    ImpulseActionPanel.Children.Clear();
+                    ImpulseActionPanel.Children.Add(BuildButton("SKIP (don't move)", () =>
+                    {
+                        f.Chosen = null;
+                        ClearPrompt();
+                        _human.CompleteChoice();
+                    }));
+                }
                 break;
 
             case DeclareMoveRequest m:

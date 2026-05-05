@@ -20,6 +20,12 @@ public sealed record SelectFleetRequest : ChoiceRequest
     public required PlayerId Player { get; init; }
     public required IReadOnlyList<ShipLocation> LegalLocations { get; init; }
     public ShipLocation? Chosen { get; set; }
+    // QoL: when true the UI surfaces a SKIP button so the player can
+    // decline this fleet's movement without first picking a fleet and
+    // then choosing STAY at the path stage. Skip is signalled by leaving
+    // Chosen == null. Defaults to true since rulebook p.22 says "Actions
+    // are always optional"; handlers that don't want skip can opt out.
+    public bool AllowSkip { get; init; } = true;
 }
 
 public sealed record DeclareMoveRequest : ChoiceRequest

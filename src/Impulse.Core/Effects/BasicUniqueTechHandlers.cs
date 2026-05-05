@@ -117,8 +117,14 @@ public sealed class AriekTechHandler : IEffectHandler
         if (st.Stage == Stage.AwaitingFleet)
         {
             var req = (SelectFleetRequest)ctx.PendingChoice!;
-            var origin = req.Chosen ?? throw new InvalidOperationException("fleet not chosen");
             ctx.PendingChoice = null;
+            if (req.Chosen is null)
+            {
+                g.Log.Write($"  → Ariek: fleet skipped");
+                ctx.IsComplete = true;
+                return true;
+            }
+            var origin = req.Chosen;
             st.Origin = origin;
 
             var paths = Movement.EnumeratePaths(g, ctx.ActivatingPlayer, origin, 1)
@@ -379,8 +385,14 @@ public sealed class HerculeseTechHandler : IEffectHandler
         if (st.Stage == Stage.AwaitingFleet)
         {
             var req = (SelectFleetRequest)ctx.PendingChoice!;
-            var origin = req.Chosen ?? throw new InvalidOperationException("fleet not chosen");
             ctx.PendingChoice = null;
+            if (req.Chosen is null)
+            {
+                g.Log.Write($"  → Herculese: fleet skipped");
+                ctx.IsComplete = true;
+                return true;
+            }
+            var origin = req.Chosen;
             st.Origin = origin;
 
             var paths = Movement.EnumeratePaths(g, ctx.ActivatingPlayer, origin, 1)

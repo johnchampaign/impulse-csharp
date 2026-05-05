@@ -187,8 +187,17 @@ public sealed class CommandHandler : IEffectHandler
         if (st.Stage == Stage.AwaitingFleet)
         {
             var req = (SelectFleetRequest)ctx.PendingChoice!;
-            var origin = req.Chosen ?? throw new InvalidOperationException("fleet not chosen");
             ctx.PendingChoice = null;
+            // SKIP path: player declined to move this fleet (req.AllowSkip
+            // and req.Chosen == null). For multi-fleet commands, advance to
+            // the next fleet (or fire deferred activation / end if last).
+            // For single-fleet commands, the action ends with no movement.
+            if (req.Chosen is null)
+            {
+                g.Log.Write($"  → command: fleet {st.FleetIndex + 1}/{st.TotalFleets} skipped");
+                return CompleteFleet(g, ctx, st);
+            }
+            var origin = req.Chosen;
             st.Origin = origin;
 
             int shipsHere = Mechanics.CountShipsAt(g, ctx.ActivatingPlayer, origin);
