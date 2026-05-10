@@ -306,29 +306,32 @@ public sealed class CommandHandler : IEffectHandler
                 return true;
             }
 
-            // Battle / passage destruction (cruiser movement only).
+            // Battle / passage destruction (cruiser movement only). Unified
+            // flow: a battle happens at toGate when toGate has any enemy
+            // cruiser. The defender candidates are the enemies AT toGate
+            // (not all passage patrollers), which avoids picking a defender
+            // who has no presence at the destination — the bug was: in a
+            // multi-patroller scenario the prompt offered every patroller
+            // of the passage card, so the player could pick a defender
+            // without a cruiser at toGate, leaving the actual occupant
+            // alive after the "battle". When the passage is patrolled by
+            // an enemy, PassageNode is set on BattleState so any traversed-
+            // card transports get destroyed when the attacker wins
+            // (rulebook p.28).
             if (here is ShipLocation.OnGate fromGate && step is ShipLocation.OnGate toGate)
             {
                 var pass = Movement.SharedNode(g.Map, fromGate.Gate, toGate.Gate);
-                if (pass is { } passageNode &&
-                    Movement.IsPatrolledByEnemy(g, ctx.ActivatingPlayer, passageNode))
-                {
-                    var defender = DefenderChoice.Resolve(g, ctx,
-                        FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
-                        $"Multiple players patrol {passageNode} — choose who to fight.");
-                    if (defender is null) return true; // paused for choice
-                    st.Battle = SetupBattlePatrolThrough(g, ctx, fromGate, toGate, passageNode, st.ChosenCount, defender.Value);
-                    if (BattleResolver.Step(g, ctx, st.Battle))
-                    { st.Battle = null; return CompleteFleet(g, ctx, st); }
-                    return true;
-                }
+                bool passagePatrolled = pass is { } pn0 &&
+                    Movement.IsPatrolledByEnemy(g, ctx.ActivatingPlayer, pn0);
                 if (Movement.HasEnemyCruiserOnGate(g, ctx.ActivatingPlayer, toGate.Gate))
                 {
                     var defender = DefenderChoice.Resolve(g, ctx,
                         FindEnemiesOnGate(g, ctx.ActivatingPlayer, toGate.Gate),
                         $"Multiple players have cruisers on {toGate.Gate} — choose who to fight.");
                     if (defender is null) return true; // paused for choice
-                    st.Battle = SetupBattleMoveOnto(g, ctx, fromGate, toGate, st.ChosenCount, defender.Value);
+                    st.Battle = passagePatrolled
+                        ? SetupBattlePatrolThrough(g, ctx, fromGate, toGate, pass!.Value, st.ChosenCount, defender.Value)
+                        : SetupBattleMoveOnto(g, ctx, fromGate, toGate, st.ChosenCount, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     { st.Battle = null; return CompleteFleet(g, ctx, st); }
                     return true;

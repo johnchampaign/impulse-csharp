@@ -405,46 +405,98 @@ public class CommandHandlerTests
         var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
         var ctx = Ctx(p1, sourceCardId: 31);
 
-        // Resolve: pick P1's cruiser as the fleet, declare path through node.
-        // Drain prompts until we hit either a SelectFromOptionsRequest
-        // (defender choice — the bug fix) or completion.
-        SelectFromOptionsRequest? defenderPrompt = null;
-        bool completed = false;
-        for (int safety = 0; safety < 20 && !completed; safety++)
+        // Drive the handler until DeclareMoveRequest fires; capture its
+        // LegalPaths.
+        DeclareMoveRequest? movePrompt = null;
+        for (int safety = 0; safety < 20; safety++)
         {
             handler.Execute(g, ctx);
-            if (ctx.IsComplete) { completed = true; break; }
+            if (ctx.IsComplete) break;
             if (ctx.PendingChoice is null) break;
             switch (ctx.PendingChoice)
             {
                 case SelectFleetRequest f:
                     f.Chosen = new ShipLocation.OnGate(gates[0].Id);
                     break;
-                case SelectFleetSizeRequest sz:
-                    sz.Chosen = sz.Min;
-                    break;
+                case SelectFleetSizeRequest sz: sz.Chosen = sz.Min; break;
                 case DeclareMoveRequest dm:
-                    // Pick a path that passes through `node` (any path of
-                    // length 1 ending on gates[1] or gates[2] will pass
-                    // through node since gates[0] also touches node).
-                    var path = dm.LegalPaths.FirstOrDefault(p =>
-                        p.Count == 1 && p[0] is ShipLocation.OnGate og &&
-                        (og.Gate == gates[1].Id || og.Gate == gates[2].Id));
-                    Assert.NotNull(path);
-                    dm.ChosenPath = path;
-                    break;
-                case SelectFromOptionsRequest opt:
-                    defenderPrompt = opt;
-                    completed = true; // we got the prompt — stop
-                    break;
+                    movePrompt = dm;
+                    goto Done;
                 default:
                     throw new Xunit.Sdk.XunitException($"Unexpected: {ctx.PendingChoice.GetType().Name}");
             }
             ctx.Paused = false;
         }
+        Done:
+
+        // Player picks WHICH patroller to fight by clicking that gate.
+        // LegalPaths must include a path ending on each patroller's gate
+        // (gates[1] = P2, gates[2] = P3); empty gates of the patrolled
+        // passage are filtered out by the path-enumeration rule.
+        Assert.NotNull(movePrompt);
+        bool hasP2Path = movePrompt!.LegalPaths.Any(p =>
+            p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == gates[1].Id);
+        bool hasP3Path = movePrompt.LegalPaths.Any(p =>
+            p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == gates[2].Id);
+        Assert.True(hasP2Path, "Path to P2's gate (gates[1]) must be enumerated");
+        Assert.True(hasP3Path, "Path to P3's gate (gates[2]) must be enumerated");
+    }
+
+    [Fact]
+    public void Move_onto_shared_gate_with_two_enemies_prompts_for_defender()
+    {
+        // Defender-choice prompt now fires only when two players have
+        // cruisers on the SAME destination gate (rare). Setup forces this:
+        // P1 cruiser at startGate, P2 and P3 BOTH on the same gateB.
+        var r = new EffectRegistry();
+        CommandRegistrations.RegisterAll(r);
+        var g = SetupFactory.NewGame(
+            new SetupOptions(3, Seed: 1,
+                InitialTransportsAtHome: 0,
+                InitialCruisersAtHomeGate: 0, AllNodesFaceUp: true,
+                InitialHandSize: 0),
+            r);
+        var p1 = new PlayerId(1);
+        var p2 = new PlayerId(2);
+        var p3 = new PlayerId(3);
+        var p1Home = g.Map.HomeNodeIds[p1];
+        var startGate = g.Map.AdjacencyByNode[p1Home].First();
+        var passageNode = startGate.EndpointA == p1Home
+            ? startGate.EndpointB : startGate.EndpointA;
+        var targetGate = g.Map.AdjacencyByNode[passageNode]
+            .First(gt => gt.Id != startGate.Id);
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(startGate.Id)));
+        g.ShipPlacements.Add(new(p2, new ShipLocation.OnGate(targetGate.Id)));
+        g.ShipPlacements.Add(new(p3, new ShipLocation.OnGate(targetGate.Id)));
+
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 31);
+        SelectFromOptionsRequest? defenderPrompt = null;
+        for (int safety = 0; safety < 20; safety++)
+        {
+            handler.Execute(g, ctx);
+            if (ctx.IsComplete) break;
+            if (ctx.PendingChoice is null) break;
+            switch (ctx.PendingChoice)
+            {
+                case SelectFleetRequest f:
+                    f.Chosen = new ShipLocation.OnGate(startGate.Id); break;
+                case SelectFleetSizeRequest sz: sz.Chosen = sz.Min; break;
+                case DeclareMoveRequest dm:
+                    dm.ChosenPath = dm.LegalPaths.First(p =>
+                        p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == targetGate.Id);
+                    break;
+                case SelectFromOptionsRequest opt:
+                    defenderPrompt = opt;
+                    goto Done;
+                default:
+                    throw new Xunit.Sdk.XunitException($"Unexpected: {ctx.PendingChoice.GetType().Name}");
+            }
+            ctx.Paused = false;
+        }
+        Done:
 
         Assert.NotNull(defenderPrompt);
-        // Both P2 and P3 should be options.
         Assert.Equal(2, defenderPrompt!.Options.Count);
         Assert.Contains("P2", string.Join(" ", defenderPrompt.Options));
         Assert.Contains("P3", string.Join(" ", defenderPrompt.Options));
@@ -492,9 +544,9 @@ public class CommandHandlerTests
         var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
         var ctx = Ctx(p1, sourceCardId: 31);
 
-        // Drive the handler. Each iteration either makes progress, hits the
-        // defender prompt, or reaches battle/completion.
-        SelectFromOptionsRequest? defenderPrompt = null;
+        // Drive the handler. Each iteration either makes progress or
+        // reaches the path-declaration prompt.
+        DeclareMoveRequest? movePrompt = null;
         for (int safety = 0; safety < 30; safety++)
         {
             handler.Execute(g, ctx);
@@ -509,17 +561,7 @@ public class CommandHandlerTests
                     sz.Chosen = sz.Min;
                     break;
                 case DeclareMoveRequest dm:
-                    // Pick any path of length 1 ending at another SC gate
-                    // (so the cruiser passes through SC, triggering the
-                    // patrol-through battle).
-                    var path = dm.LegalPaths.FirstOrDefault(p =>
-                        p.Count == 1 && p[0] is ShipLocation.OnGate og &&
-                        scGates.Any(sg => sg.Id == og.Gate && og.Gate != scGates[0].Id));
-                    Assert.NotNull(path);
-                    dm.ChosenPath = path;
-                    break;
-                case SelectFromOptionsRequest opt:
-                    defenderPrompt = opt;
+                    movePrompt = dm;
                     goto Done;
                 default:
                     throw new Xunit.Sdk.XunitException(
@@ -529,33 +571,31 @@ public class CommandHandlerTests
         }
         Done:
 
-        // (1) Defender prompt fired with all 5 enemies as options.
-        Assert.NotNull(defenderPrompt);
-        Assert.Equal(5, defenderPrompt!.Options.Count);
+        // Player picks WHICH patroller by clicking that gate. Path
+        // enumeration must offer a 1-step path ending on EACH of the 5
+        // other SC gates (one per enemy patroller).
+        Assert.NotNull(movePrompt);
         for (int seat = 2; seat <= 6; seat++)
-            Assert.Contains($"P{seat}", string.Join(" ", defenderPrompt.Options));
+        {
+            int seatIdx = seat - 1; // scGates index for this seat's cruiser
+            bool hasPath = movePrompt!.LegalPaths.Any(p =>
+                p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == scGates[seatIdx].Id);
+            Assert.True(hasPath, $"Path to P{seat}'s gate (scGates[{seatIdx}]) must be enumerated");
+        }
 
-        // (2) Pick the THIRD option (which should be P4 since candidates are
-        // sorted by player ID: P2, P3, P4, P5, P6 → index 2 is P4). Verify
-        // the engine actually fights P4, not whoever happens to be first.
-        defenderPrompt.Chosen = 2; // P4
+        // Pick path to P4's gate (scGates[3]) and verify battle is at that
+        // gate vs P4.
+        movePrompt!.ChosenPath = movePrompt.LegalPaths.First(p =>
+            p.Count == 1 && p[0] is ShipLocation.OnGate og && og.Gate == scGates[3].Id);
         ctx.Paused = false;
-        // Continue execution until battle either completes or pauses for
-        // reinforcement input.
         for (int safety = 0; safety < 30; safety++)
         {
             handler.Execute(g, ctx);
             if (ctx.IsComplete) break;
             if (ctx.PendingChoice is null) break;
-            // The battle resolver may prompt for reinforcement cards; just
-            // accept "none" by submitting the smallest legal answer or
-            // whatever the prompt accepts. For this test, we only need to
-            // confirm WHO is the defender, which is set the moment battle
-            // setup runs — so peek at the log instead.
             break;
         }
 
-        // The battle log line includes the defender's player id.
         bool found = false;
         foreach (var line in g.Log.Lines)
         {
@@ -566,7 +606,7 @@ public class CommandHandlerTests
             }
         }
         Assert.True(found,
-            "Expected battle log line showing P1 attacks P4 (the chosen defender). " +
+            "Expected battle log line showing P1 attacks P4 (clicked gate). " +
             "Lines:\n" + string.Join("\n", g.Log.Lines.Where(l => l.Contains("Battle"))));
     }
 

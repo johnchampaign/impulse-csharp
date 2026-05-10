@@ -329,30 +329,17 @@ public sealed class BasicCommonTechHandler : IEffectHandler
             if (here is ShipLocation.OnGate fromGate && step is ShipLocation.OnGate toGate)
             {
                 var pass = Movement.SharedNode(g.Map, fromGate.Gate, toGate.Gate);
-                if (pass is { } passageNode &&
-                    Movement.IsPatrolledByEnemy(g, ctx.ActivatingPlayer, passageNode))
-                {
-                    var defender = DefenderChoice.Resolve(g, ctx,
-                        CommandHandler.FindPatrollers(g, ctx.ActivatingPlayer, passageNode),
-                        $"Multiple players patrol {passageNode} — choose who to fight.");
-                    if (defender is null) return true; // paused for choice
-                    st.Battle = CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, toGate, passageNode, st.ChosenCount, defender.Value);
-                    if (BattleResolver.Step(g, ctx, st.Battle))
-                    {
-                        st.Battle = null;
-                        st.Stage = Stage.Done;
-                        ctx.IsComplete = true;
-                        return true;
-                    }
-                    return true;
-                }
+                bool passagePatrolled = pass is { } pn0 &&
+                    Movement.IsPatrolledByEnemy(g, ctx.ActivatingPlayer, pn0);
                 if (Movement.HasEnemyCruiserOnGate(g, ctx.ActivatingPlayer, toGate.Gate))
                 {
                     var defender = DefenderChoice.Resolve(g, ctx,
                         CommandHandler.FindEnemiesOnGate(g, ctx.ActivatingPlayer, toGate.Gate),
                         $"Multiple players have cruisers on {toGate.Gate} — choose who to fight.");
                     if (defender is null) return true; // paused for choice
-                    st.Battle = CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, st.ChosenCount, defender.Value);
+                    st.Battle = passagePatrolled
+                        ? CommandHandler.SetupBattlePatrolThrough(g, ctx, fromGate, toGate, pass!.Value, st.ChosenCount, defender.Value)
+                        : CommandHandler.SetupBattleMoveOnto(g, ctx, fromGate, toGate, st.ChosenCount, defender.Value);
                     if (BattleResolver.Step(g, ctx, st.Battle))
                     {
                         st.Battle = null;
