@@ -796,7 +796,14 @@ public partial class MainWindow : Window
                     MessageBox.Show(this, $"Engine crashed: {ex.GetType().Name}: {ex.Message}\n\n{ex.StackTrace}",
                         "Impulse — Engine Crash", MessageBoxButton.OK, MessageBoxImage.Error));
             }
-            Dispatcher.InvokeAsync(ShowGameOverIfDone);
+            // ApplicationIdle: ensures any pending battle-summary
+            // MessageBox.Show queued via OnAlert finishes its modal pump
+            // before the game-over dialog appears on top. Without this,
+            // a battle that ends the game would surface the game-over
+            // dialog first (Normal priority runs inside the open
+            // MessageBox's modal frame), and the battle summary would
+            // only become visible after the user clicked OK.
+            Dispatcher.InvokeAsync(ShowGameOverIfDone, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         });
     }
 
@@ -1055,7 +1062,14 @@ public partial class MainWindow : Window
                     MessageBox.Show(this, $"Engine crashed: {ex.GetType().Name}: {ex.Message}\n\n{ex.StackTrace}",
                         "Impulse — Engine Crash", MessageBoxButton.OK, MessageBoxImage.Error));
             }
-            Dispatcher.InvokeAsync(ShowGameOverIfDone);
+            // ApplicationIdle: ensures any pending battle-summary
+            // MessageBox.Show queued via OnAlert finishes its modal pump
+            // before the game-over dialog appears on top. Without this,
+            // a battle that ends the game would surface the game-over
+            // dialog first (Normal priority runs inside the open
+            // MessageBox's modal frame), and the battle summary would
+            // only become visible after the user clicked OK.
+            Dispatcher.InvokeAsync(ShowGameOverIfDone, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         });
     }
 
