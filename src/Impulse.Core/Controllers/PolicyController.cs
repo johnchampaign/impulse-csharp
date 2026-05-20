@@ -84,15 +84,22 @@ public sealed class PolicyController : IPlayerController
         {
             // Greedy: actually greedy — prefer immediate-prestige actions,
             // ranked by typical points-per-use.
+            // Sabotage scores low across all policies (was 5–7) because
+            // placement empirically loses: 0/54 placements by winning
+            // humans across 60 games of telemetry. Placing Sabotage on the
+            // shared Impulse track gifts the bomb action to every other
+            // player — so the placer's own fleets become targets too. The
+            // anti-leader Munchkin policy gets a state-aware bump in the
+            // adjustments block below; the bias here is intentionally low.
             AiPolicy.Greedy => c.ActionType switch
             {
                 CardActionType.Trade => 6,    // +1 per icon, easy points
                 CardActionType.Refine => 6,   // direct prestige
-                CardActionType.Sabotage => 5, // +1 per ship destroyed
                 CardActionType.Command => 4,  // patrols core gates
-                CardActionType.Build => 4,    // adds combat material
+                CardActionType.Build => 3,    // adds combat material; humans place 3/97 (3%)
                 CardActionType.Mine => 3,     // sets up future Refine
                 CardActionType.Execute => 3,
+                CardActionType.Sabotage => 2, // shared use hurts the placer
                 CardActionType.Research => 2,
                 CardActionType.Plan => 2,     // delayed prestige
                 CardActionType.Draw => 1,     // weakest card type
@@ -100,9 +107,9 @@ public sealed class PolicyController : IPlayerController
             },
             AiPolicy.Warrior => c.ActionType switch
             {
-                CardActionType.Sabotage => 7,
                 CardActionType.Command => 5,
-                CardActionType.Build => 4,    // build cruisers for war
+                CardActionType.Build => 3,    // build cruisers for war (was 4)
+                CardActionType.Sabotage => 3, // was 7; humans never place
                 CardActionType.Trade => 2,
                 CardActionType.Refine => 2,
                 _ => 1,
@@ -110,16 +117,16 @@ public sealed class PolicyController : IPlayerController
             AiPolicy.CoreRush => c.ActionType switch
             {
                 CardActionType.Command => 7,
-                CardActionType.Build => 5,
+                CardActionType.Build => 4,    // was 5; reduced for placement
                 CardActionType.Trade => 2,
                 CardActionType.Refine => 2,
                 _ => 1,
             },
             AiPolicy.Munchkin => c.ActionType switch
             {
-                CardActionType.Sabotage => 7,
                 CardActionType.Command => 4,  // for attacking leader
-                CardActionType.Build => 3,
+                CardActionType.Sabotage => 3, // was 7; anti-leader bonus added in adjustments
+                CardActionType.Build => 2,    // was 3
                 _ => 1,
             },
             AiPolicy.Refine => c.ActionType switch
@@ -154,32 +161,34 @@ public sealed class PolicyController : IPlayerController
                 if (me.Hand.Count <= 1) baseScore -= 2;
                 break;
             case CardActionType.Sabotage:
-                // No legal target = no score.
+                // PLACEMENT scoring (this method is only called from
+                // PlaceImpulse). Sabotage placement is empirically a losing
+                // move: 0/54 placements by winning humans when they had
+                // Sabotage in hand. The "asymmetric upside" reasoning that
+                // used to be here ignored a key fact — placing on Impulse
+                // shares the action with every player, so the placer's own
+                // fleets are also at risk.
+                //
+                // Keep one targeted bump: Munchkin (anti-leader) trailing
+                // by a clear margin gets a small bonus when the leader has
+                // a fat fleet to sabotage. Don't over-stack.
                 if (!HasAnyEnemyShip(g)) return 1;
-                // Asymmetric upside: failed bombs cost nothing; successful
-                // bombs both score prestige and destroy ships. Always good
-                // when there's a target. Bonus when there's a fat fleet to
-                // hit (more ships destroyed = more prestige scored).
-                int biggestFleet = g.ShipPlacements
-                    .Where(sp => sp.Owner != Seat)
-                    .GroupBy(sp => (sp.Owner, sp.Location switch
-                    {
-                        ShipLocation.OnNode n => (0, n.Node.Value),
-                        ShipLocation.OnGate gateLoc => (1, gateLoc.Gate.Value),
-                        _ => (-1, 0),
-                    }))
-                    .Select(grp => grp.Count())
-                    .DefaultIfEmpty(0)
-                    .Max();
-                baseScore += Math.Min(biggestFleet, 3);
-                if (meTrails && (Policy == AiPolicy.Munchkin || Policy == AiPolicy.Warrior))
-                    baseScore += 2;
-                // Player-count modulation: at low counts each opponent's
-                // ship loss is a much bigger fraction of total opposition,
-                // so sabotage is more impactful. At 6p the marginal damage
-                // to one opponent matters less.
-                if (g.Players.Count <= 2) baseScore += 2;
-                else if (g.Players.Count >= 5) baseScore -= 1;
+                if (Policy == AiPolicy.Munchkin && meTrails &&
+                    LeaderId(g) is { } leadId)
+                {
+                    int leadFleet = g.ShipPlacements
+                        .Where(sp => sp.Owner == leadId)
+                        .GroupBy(sp => (sp.Owner, sp.Location switch
+                        {
+                            ShipLocation.OnNode n => (0, n.Node.Value),
+                            ShipLocation.OnGate gateLoc => (1, gateLoc.Gate.Value),
+                            _ => (-1, 0),
+                        }))
+                        .Select(grp => grp.Count())
+                        .DefaultIfEmpty(0)
+                        .Max();
+                    if (leadFleet >= 3) baseScore += 2;
+                }
                 break;
             case CardActionType.Build:
                 // Build needs ships available.
