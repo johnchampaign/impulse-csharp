@@ -511,9 +511,66 @@ public partial class MainWindow : Window
         _g.Log.Write($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
         _g.Log.Write($">>> PROBLEM REPORT (turn={_g.CurrentTurn} phase={_g.Phase} active=P{_g.ActivePlayer.Value} {active.Race.Name}): {note}");
         _g.Log.Write($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-        MessageBox.Show(this,
-            "Bug flagged in the log. Click SUBMIT LOGS when you're ready to send it to the developer.",
-            "Flag bug", MessageBoxButton.OK, MessageBoxImage.Information);
+        // Auto-submit so the flag doesn't require a second click — the
+        // marker is only useful once the developer actually receives the
+        // log. SubmitCurrentLogToDataset is a non-blocking helper that
+        // runs the same submission path SUBMIT LOGS uses but with the
+        // simpler "just this game's active log" scope, and reports a
+        // toast-style result instead of a full consent dialog (the
+        // FLAG BUG button has its own consent affordance: the player
+        // typed the description and clicked FLAG).
+        _ = SubmitActiveLogAsync();
+    }
+
+    private async Task SubmitActiveLogAsync()
+    {
+        try
+        {
+            var path = _g?.Log?.FilePath;
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                MessageBox.Show(this,
+                    "Bug flagged in the log, but no log file is open to submit.",
+                    "Flag bug", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            string content = StripLocalPathHeader(File.ReadAllText(path));
+            if (content.Length < 400)
+            {
+                MessageBox.Show(this,
+                    "Bug flagged, but the log is too short to submit. Keep playing — the marker is preserved in the local log file and will be sent on the next SUBMIT LOGS.",
+                    "Flag bug", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            string version = typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "unknown";
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            var body = new { log = content, version, os = "windows" };
+            var json = System.Text.Json.JsonSerializer.Serialize(body);
+            var resp = await http.PostAsync(LogSubmitEndpoint,
+                new StringContent(json, System.Text.Encoding.UTF8, "application/json"));
+            if (resp.IsSuccessStatusCode)
+            {
+                var text = await resp.Content.ReadAsStringAsync();
+                bool duplicate = text.Contains("\"duplicate\":true", StringComparison.OrdinalIgnoreCase);
+                MessageBox.Show(this,
+                    duplicate
+                        ? "Bug flagged and log re-submitted (the dataset already had this version of the log — that's fine)."
+                        : "Bug flagged and log submitted. Thanks!",
+                    "Flag bug", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(this,
+                    "Bug flagged in the local log, but the upload didn't reach the server (network issue?). The marker is preserved; SUBMIT LOGS will retry it later.",
+                    "Flag bug", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this,
+                $"Bug flagged in the local log, but submit failed: {ex.GetType().Name}: {ex.Message}\n\nSUBMIT LOGS will retry it later.",
+                "Flag bug", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     // Endpoint for log submission. The deployed Cloudflare Worker accepts
