@@ -40,6 +40,11 @@ public partial class MainWindow : Window
     private Func<ShipLocation, bool>? _onMapLocClick;
     private HashSet<NodeId> _highlightNodes = new();
     private HashSet<GateId> _highlightGates = new();
+    // The origin of an in-progress path declaration. Drawn with a "FROM"
+    // badge during DeclareMove so the player can't confuse "the fleet I
+    // already picked" with "a legal destination" when both happen to
+    // visually overlap (e.g. a same-color fleet on a highlighted gate).
+    private ShipLocation? _pathDeclareOrigin;
     private HashSet<int>? _legalHandCardIds; // null = all hand cards visually equal
     private string? _handPromptOverride;
     private bool _showMineralsInsteadOfHand;
@@ -1296,8 +1301,8 @@ public partial class MainWindow : Window
         {
             case SelectFleetRequest f:
                 PromptText.Text = f.AllowSkip
-                    ? "Click a fleet to move, or SKIP."
-                    : "Click a node or gate to select your fleet's location.";
+                    ? "Choose ORIGIN — click one of your fleets to move (or SKIP)."
+                    : "Choose ORIGIN — click one of your fleets (node or gate).";
                 HighlightLocations(f.LegalLocations);
                 _onMapLocClick = loc =>
                 {
@@ -1523,14 +1528,21 @@ public partial class MainWindow : Window
                 .Select(grp => grp.First())
                 .ToList();
             HighlightLocations(nextSteps);
+            // Mark the origin so the player can tell visually that "this
+            // is where I'm moving FROM" — distinct from "this is a
+            // legal destination". Same visual highlight gets a "FROM"
+            // badge in RenderMap.
+            _pathDeclareOrigin = partial.Count == 0
+                ? m.Origin
+                : partial[partial.Count - 1];
             // Highlight the origin too so the user sees that clicking it is
             // a legal "stay" choice when partial is empty.
             if (partial.Count == 0)
                 AddHighlight(m.Origin);
 
             string stepLabel = partial.Count == 0
-                ? $"Pick step 1 of up to {m.MaxMoves} (click origin or STAY to not move)."
-                : $"Step {partial.Count + 1}/{m.MaxMoves} — pick next, or accept current path.";
+                ? $"Choose DESTINATION (up to {m.MaxMoves} move(s)). Origin is locked — click STAY to not move."
+                : $"DESTINATION step {partial.Count + 1}/{m.MaxMoves} — pick next gate/node, or accept current path.";
             PromptText.Text = stepLabel;
 
             ImpulseActionPanel.Children.Clear();
@@ -1620,6 +1632,7 @@ public partial class MainWindow : Window
         _onMapLocClick = null;
         _highlightNodes.Clear();
         _highlightGates.Clear();
+        _pathDeclareOrigin = null;
         _legalHandCardIds = null;
         _handPromptOverride = null;
         _showMineralsInsteadOfHand = false;
@@ -2076,6 +2089,55 @@ public partial class MainWindow : Window
                 MapCanvas.Children.Add(dot);
                 i++;
             }
+        }
+
+        // FROM badge: draws over the path-declare origin so the player can
+        // tell at a glance "this is where I'm moving FROM" vs "this is a
+        // legal destination." Without this, when the origin and a legal
+        // destination share the same player color (e.g., your own cruiser
+        // visible on a highlighted gate), the two phases look identical.
+        if (_pathDeclareOrigin is { } origin)
+        {
+            Point originPos;
+            if (origin is ShipLocation.OnNode on)
+            {
+                var n = _g.Map.Node(on.Node);
+                originPos = HexCenter(n.AxialQ, n.AxialR);
+            }
+            else if (origin is ShipLocation.OnGate og)
+            {
+                var gt = _g.Map.Gate(og.Gate);
+                var a = _g.Map.Node(gt.EndpointA);
+                var b = _g.Map.Node(gt.EndpointB);
+                var pa = HexCenter(a.AxialQ, a.AxialR);
+                var pb = HexCenter(b.AxialQ, b.AxialR);
+                originPos = new Point((pa.X + pb.X) / 2, (pa.Y + pb.Y) / 2);
+            }
+            else { return; }
+
+            var badge = new Border
+            {
+                Background = (Brush)FindResource("Accent"),
+                BorderBrush = Brushes.Black,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(5, 1, 5, 1),
+                IsHitTestVisible = false,
+            };
+            badge.Child = new TextBlock
+            {
+                Text = "FROM",
+                Foreground = Brushes.Black,
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            };
+            badge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            // Offset above the location so it doesn't cover ship sprites.
+            Canvas.SetLeft(badge, originPos.X - badge.DesiredSize.Width / 2);
+            Canvas.SetTop(badge, originPos.Y - HexRadius * 0.55 - badge.DesiredSize.Height / 2);
+            Canvas.SetZIndex(badge, 20);
+            MapCanvas.Children.Add(badge);
         }
     }
 
