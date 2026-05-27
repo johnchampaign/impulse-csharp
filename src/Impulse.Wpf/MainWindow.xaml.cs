@@ -45,6 +45,14 @@ public partial class MainWindow : Window
     // already picked" with "a legal destination" when both happen to
     // visually overlap (e.g. a same-color fleet on a highlighted gate).
     private ShipLocation? _pathDeclareOrigin;
+    // Two highlight phases look visually distinct:
+    //   Origin   → orange accent ring around the location (existing)
+    //   Destination → player-colored dot on top of the location, hover-ring
+    // This avoids the ambiguity "is the highlighted gate where I AM or
+    // where I'm GOING?" — origin pick and destination pick share no
+    // visual vocabulary.
+    private enum HighlightPhase { None, Origin, Destination }
+    private HighlightPhase _highlightPhase = HighlightPhase.None;
     private HashSet<int>? _legalHandCardIds; // null = all hand cards visually equal
     private string? _handPromptOverride;
     private bool _showMineralsInsteadOfHand;
@@ -1304,6 +1312,7 @@ public partial class MainWindow : Window
                     ? "Choose ORIGIN — click one of your fleets to move (or SKIP)."
                     : "Choose ORIGIN — click one of your fleets (node or gate).";
                 HighlightLocations(f.LegalLocations);
+                _highlightPhase = HighlightPhase.Origin;
                 _onMapLocClick = loc =>
                 {
                     if (!ContainsLoc(f.LegalLocations, loc)) return false;
@@ -1528,10 +1537,11 @@ public partial class MainWindow : Window
                 .Select(grp => grp.First())
                 .ToList();
             HighlightLocations(nextSteps);
+            _highlightPhase = HighlightPhase.Destination;
             // Mark the origin so the player can tell visually that "this
             // is where I'm moving FROM" — distinct from "this is a
-            // legal destination". Same visual highlight gets a "FROM"
-            // badge in RenderMap.
+            // legal destination". The "FROM" badge in RenderMap is drawn
+            // here.
             _pathDeclareOrigin = partial.Count == 0
                 ? m.Origin
                 : partial[partial.Count - 1];
@@ -1632,6 +1642,7 @@ public partial class MainWindow : Window
         _onMapLocClick = null;
         _highlightNodes.Clear();
         _highlightGates.Clear();
+        _highlightPhase = HighlightPhase.None;
         _pathDeclareOrigin = null;
         _legalHandCardIds = null;
         _handPromptOverride = null;
@@ -1789,6 +1800,9 @@ public partial class MainWindow : Window
         }
 
         // gates
+        var humanColorBrush = _human is not null
+            ? PlayerBrush(_g.Player(_human.Seat).Color)
+            : (Brush)FindResource("Accent");
         foreach (var gate in _g.Map.Gates)
         {
             var a = _g.Map.Node(gate.EndpointA);
@@ -1796,11 +1810,21 @@ public partial class MainWindow : Window
             var pa = HexCenter(a.AxialQ, a.AxialR);
             var pb = HexCenter(b.AxialQ, b.AxialR);
             bool hi = _highlightGates.Contains(gate.Id);
+            bool isOriginGate = _pathDeclareOrigin is ShipLocation.OnGate og && og.Gate == gate.Id;
+            bool isDestination = hi
+                && _highlightPhase == HighlightPhase.Destination
+                && !isOriginGate;
+            // Origin pick (or stay-on-origin during destination pick) →
+            // accent ring. Destination during destination-pick → keep the
+            // default stroke; we'll mark it with a player-colored dot at
+            // midpoint so it visually parses as "move TO here", not "I am
+            // here."
+            bool showAccent = hi && !isDestination;
             var line = new Line
             {
                 X1 = pa.X, Y1 = pa.Y, X2 = pb.X, Y2 = pb.Y,
-                Stroke = hi ? (Brush)FindResource("Accent") : (Brush)FindResource("GateStroke"),
-                StrokeThickness = hi ? 6 : 4,
+                Stroke = showAccent ? (Brush)FindResource("Accent") : (Brush)FindResource("GateStroke"),
+                StrokeThickness = showAccent ? 6 : 4,
                 Cursor = hi ? Cursors.Hand : Cursors.Arrow,
             };
             if (hi)
@@ -1809,6 +1833,23 @@ public partial class MainWindow : Window
                 line.MouseLeftButtonDown += (_, _) => _onMapLocClick?.Invoke(new ShipLocation.OnGate(capturedId));
             }
             MapCanvas.Children.Add(line);
+
+            if (isDestination)
+            {
+                var mid = new Point((pa.X + pb.X) / 2, (pa.Y + pb.Y) / 2);
+                var dot = new Ellipse
+                {
+                    Width = 18, Height = 18,
+                    Fill = humanColorBrush,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(dot, mid.X - 9);
+                Canvas.SetTop(dot, mid.Y - 9);
+                Canvas.SetZIndex(dot, 15); // above gate line + cruiser sprites
+                MapCanvas.Children.Add(dot);
+            }
         }
 
         // gate-mounted cruisers, grouped by (gate, owner) so multi-cruiser
@@ -1944,7 +1985,12 @@ public partial class MainWindow : Window
             Brush faceUpStroke = (Brush)FindResource("NodeStroke");
             if (isFaceUp && cardState is NodeCardState.FaceUp fu)
                 faceUpStroke = CardBrush(_g.CardsById[fu.CardId].Color);
-            hex.Stroke = hi
+            bool isOriginNode = _pathDeclareOrigin is ShipLocation.OnNode onN && onN.Node == node.Id;
+            bool isDestinationNode = hi
+                && _highlightPhase == HighlightPhase.Destination
+                && !isOriginNode;
+            bool nodeShowAccent = hi && !isDestinationNode;
+            hex.Stroke = nodeShowAccent
                 ? (Brush)FindResource("Accent")
                 : node.IsSectorCore
                     ? (Brush)FindResource("SectorCoreStroke")
@@ -1953,12 +1999,27 @@ public partial class MainWindow : Window
                         : isFaceUp
                             ? faceUpStroke
                             : (Brush)FindResource("NodeStroke"));
-            hex.StrokeThickness = hi ? 4 : (node.IsHome || node.IsSectorCore || isFaceUp ? 3 : 1.5);
+            hex.StrokeThickness = nodeShowAccent ? 4 : (node.IsHome || node.IsSectorCore || isFaceUp ? 3 : 1.5);
             if (hi)
             {
                 var capturedId = node.Id;
                 hex.Cursor = Cursors.Hand;
                 hex.MouseLeftButtonDown += (_, _) => _onMapLocClick?.Invoke(new ShipLocation.OnNode(capturedId));
+            }
+            if (isDestinationNode)
+            {
+                var dot = new Ellipse
+                {
+                    Width = 22, Height = 22,
+                    Fill = humanColorBrush,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(dot, p.X - 11);
+                Canvas.SetTop(dot, p.Y - 11);
+                Canvas.SetZIndex(dot, 15);
+                MapCanvas.Children.Add(dot);
             }
             // Hover any face-up node to show its card in the detail panel.
             if (isFaceUp && cardState is NodeCardState.FaceUp fuHover)
