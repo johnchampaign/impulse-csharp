@@ -452,6 +452,70 @@ public partial class MainWindow : Window
         ShowPasteCodecDialog();
     }
 
+    // Player-initiated bug marker. Writes a distinctive line into the
+    // active log file at the current turn/phase, so when the log is
+    // reviewed later (or submitted via SUBMIT LOGS) the relevant section
+    // is easy to find — grep "PROBLEM REPORT" jumps right to the moment
+    // the player flagged.
+    private void FlagBugButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_g is null) return;
+        var dlg = new Window
+        {
+            Title = "Flag a bug",
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            ResizeMode = ResizeMode.NoResize,
+            Background = (Brush)FindResource("BgPanel"),
+        };
+        var stack = new StackPanel { Margin = new Thickness(16) };
+        stack.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("Body"),
+            Text = "Briefly describe what just went wrong. The marker gets written to the\n" +
+                   "game log along with the current turn/phase so it's easy to find later.",
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+        var input = new TextBox
+        {
+            Width = 480,
+            MinHeight = 60,
+            TextWrapping = TextWrapping.Wrap,
+            AcceptsReturn = true,
+            Background = (Brush)FindResource("BgPanel2"),
+            Foreground = (Brush)FindResource("FgPrimary"),
+            BorderBrush = (Brush)FindResource("Accent"),
+            Padding = new Thickness(6),
+        };
+        stack.Children.Add(input);
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0),
+        };
+        var cancel = BuildButton("CANCEL", () => dlg.DialogResult = false);
+        cancel.Margin = new Thickness(0, 0, 8, 0);
+        buttons.Children.Add(cancel);
+        buttons.Children.Add(BuildButton("FLAG", () => dlg.DialogResult = true));
+        stack.Children.Add(buttons);
+        dlg.Content = stack;
+        input.Focus();
+        if (dlg.ShowDialog() != true) return;
+        var note = input.Text.Trim();
+        if (note.Length == 0) note = "(no description)";
+        // Multi-line notes are flattened to a single line for grep-ability.
+        note = note.Replace("\r\n", " ").Replace("\n", " ");
+        var active = _g.Players[_g.ActivePlayer.Value - 1];
+        _g.Log.Write($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+        _g.Log.Write($">>> PROBLEM REPORT (turn={_g.CurrentTurn} phase={_g.Phase} active=P{_g.ActivePlayer.Value} {active.Race.Name}): {note}");
+        _g.Log.Write($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+        MessageBox.Show(this,
+            "Bug flagged in the log. Click SUBMIT LOGS when you're ready to send it to the developer.",
+            "Flag bug", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     // Endpoint for log submission. The deployed Cloudflare Worker accepts
     // POST {log, version} JSON, hashes the log, and writes the bytes to the
     // impulse-game-logs GitHub repo as logs/<sha256-prefix>.log. Duplicates
