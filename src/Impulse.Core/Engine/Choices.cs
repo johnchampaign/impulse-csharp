@@ -44,8 +44,12 @@ public sealed record SelectHandCardRequest : ChoiceRequest
     public required PlayerId Player { get; init; }
     public required IReadOnlyList<int> LegalCardIds { get; init; }
     // If true, controller may set ChosenCardId = null to decline (e.g. stop
-    // trading). UI surfaces a DONE button.
+    // trading). UI surfaces a button. The button's label is `NoneLabel`
+    // (default "DONE") — overridden by callers in contexts where "DONE" is
+    // ambiguous, e.g. battle reinforcement prompts where "PASS — no card"
+    // is much clearer than "DONE".
     public bool AllowNone { get; init; }
+    public string NoneLabel { get; init; } = "DONE";
     public int? ChosenCardId { get; set; }
 }
 

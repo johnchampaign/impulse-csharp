@@ -1482,12 +1482,26 @@ public partial class MainWindow : Window
                 if (h.AllowNone)
                 {
                     ImpulseActionPanel.Children.Clear();
-                    ImpulseActionPanel.Children.Add(BuildButton("DONE", () =>
+                    var noneBtn = BuildButton(h.NoneLabel, () =>
                     {
                         h.ChosenCardId = null;
                         ClearPrompt();
                         _human.CompleteChoice();
-                    }));
+                    });
+                    // Make the no-card button visually prominent when its
+                    // label is more than the default "DONE" — those longer
+                    // labels are doing UX work (e.g. "PASS — no
+                    // reinforcement" in battles) and need to be obvious
+                    // enough that the player doesn't feel forced to click a
+                    // hand card.
+                    if (h.NoneLabel != "DONE")
+                    {
+                        noneBtn.FontWeight = FontWeights.Bold;
+                        noneBtn.Padding = new Thickness(14, 8, 14, 8);
+                        noneBtn.Background = (Brush)FindResource("Accent");
+                        noneBtn.Foreground = Brushes.Black;
+                    }
+                    ImpulseActionPanel.Children.Add(noneBtn);
                 }
                 RenderHand(_g.Player(_human.Seat));
                 break;

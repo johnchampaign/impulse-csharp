@@ -143,7 +143,8 @@ public static class BattleResolver
             PromptPlayer = who,
             LegalCardIds = hand,
             AllowNone = true,
-            Prompt = $"⚔ {(defender ? "DEFENDER" : "ATTACKER")} {who}: commit any card face-down (bluffs return to hand on reveal) or DONE.",
+            NoneLabel = "PASS — no reinforcement",
+            Prompt = $"⚔ {(defender ? "DEFENDER" : "ATTACKER")} {who}: commit any card face-down as a reinforcement (bluffs return to hand on reveal), or PASS — placing zero cards is legal (rulebook p.34).",
         };
         ctx.Paused = true;
         return false;
