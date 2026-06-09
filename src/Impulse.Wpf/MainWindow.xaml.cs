@@ -1308,9 +1308,19 @@ public partial class MainWindow : Window
         switch (request)
         {
             case SelectFleetRequest f:
-                PromptText.Text = f.AllowSkip
-                    ? "Choose ORIGIN — click one of your fleets to move (or SKIP)."
-                    : "Choose ORIGIN — click one of your fleets (node or gate).";
+                // Surface the engine's descriptive Prompt — it carries the
+                // fleet index "(2/3)" for multi-fleet Commands plus ship-type
+                // context. The old generic "click one of your fleets" text was
+                // shown identically for every fleet of a multi-fleet Command,
+                // so a player commanding 3 fleets had no way to tell a later
+                // fleet pick was still coming and didn't realize they could
+                // move e.g. a cruiser as a subsequent fleet (problem report,
+                // turn-6 Command #98). Keep the ORIGIN cue (vs DESTINATION) and
+                // the SKIP affordance. Impulserules p.22 (actions optional).
+                var fleetBody = f.Prompt.Length > 0
+                    ? f.Prompt.TrimEnd('.', ' ')
+                    : "click one of your fleets" + (f.AllowSkip ? " to move" : " (node or gate)");
+                PromptText.Text = $"Choose ORIGIN — {fleetBody}" + (f.AllowSkip ? " (or SKIP)." : ".");
                 HighlightLocations(f.LegalLocations);
                 _highlightPhase = HighlightPhase.Origin;
                 _onMapLocClick = loc =>
