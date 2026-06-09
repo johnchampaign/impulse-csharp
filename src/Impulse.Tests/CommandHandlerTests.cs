@@ -235,6 +235,57 @@ public class CommandHandlerTests
     }
 
     [Fact]
+    public void Multi_fleet_auto_skip_alerts_player_instead_of_silently_ending()
+    {
+        // Problem report (turn-6 Command #98): a multi-fleet "same card"
+        // Command silently ended after the first fleet when no remaining ship
+        // could converge, so the player never understood why a later fleet
+        // (a cruiser they meant to move) never got a prompt. The engine must
+        // now surface an explanatory alert when it auto-skips the remainder
+        // rather than ending without a word.
+        var (g, _) = Bootstrap();
+        var p1 = new PlayerId(1);
+        var home = g.Map.HomeNodeIds[p1];
+        var gateA = g.Map.AdjacencyByNode[home].First();
+        // Two cruisers on the SAME home gate. Fleet 1 moves one of them off
+        // gateA; per "you cannot move the same fleet twice" the gateA origin is
+        // then spent, so the remaining cruiser there is no legal origin for
+        // fleet 2 — exactly the auto-skip path. (Cruisers on gates + all-faceup
+        // nodes ⇒ no activation/exploration/battle to complicate the drive.)
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(gateA.Id)));
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(gateA.Id)));
+
+        var alerts = new List<string>();
+        g.Log.OnAlert += alerts.Add;
+
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 75); // FleetCount=2, Either, 1 move
+
+        // Fleet 1 origin = gateA.
+        handler.Execute(g, ctx);
+        var f1 = (SelectFleetRequest)ctx.PendingChoice!;
+        f1.Chosen = new ShipLocation.OnGate(gateA.Id);
+        ctx.Paused = false;
+        handler.Execute(g, ctx);
+        // Two cruisers at gateA ⇒ count prompt; move just one.
+        var size = (SelectFleetSizeRequest)ctx.PendingChoice!;
+        size.Chosen = 1;
+        ctx.Paused = false;
+        handler.Execute(g, ctx);
+        // Fleet 1 path: one step off gateA.
+        var path = (DeclareMoveRequest)ctx.PendingChoice!;
+        path.ChosenPath = path.LegalPaths.First(p => p.Count > 0);
+        ctx.Paused = false;
+        handler.Execute(g, ctx);
+
+        // Fleet 2 has no legal origin ⇒ command auto-completes, but the player
+        // is told why instead of the old silent end.
+        Assert.True(ctx.IsComplete);
+        Assert.Null(ctx.PendingChoice);
+        Assert.Contains(alerts, a => a.Contains("same sector card"));
+    }
+
+    [Fact]
     public void Multi_fleet_card_constrains_second_fleet_to_first_destination_card()
     {
         // c75 (FleetCount=2, Either, 1 move). Set up two cruisers at separate

@@ -552,6 +552,15 @@ public sealed class CommandHandler : IEffectHandler
         if (legal.Count == 0)
         {
             g.Log.Write($"  → command: no legal origins for fleet {st.FleetIndex + 1}/{st.TotalFleets} (convergence: [{(st.ConvergenceSet is null ? "none" : string.Join(",", st.ConvergenceSet))}])");
+            // Surface the early end. Previously this path silently stopped the
+            // Command after the first fleet, so a player who intended to move a
+            // later fleet (e.g. a cruiser toward the core) got no prompt and
+            // never understood why it didn't happen (problem report, turn-6
+            // Command #98). Multi-fleet "same card" cards (rulebook p.30) force
+            // every fleet onto one card; whichever fleet moves first pins that
+            // card, which can leave a fleet the player cared about with no legal
+            // convergent move.
+            EmitNoConvergentFleetAlert(g, st);
             // No more fleets can move, but if an earlier fleet queued a
             // deferred activation we still need to fire it. Otherwise the
             // player loses the SectorCore / face-up activation they paid
@@ -577,6 +586,23 @@ public sealed class CommandHandler : IEffectHandler
         st.Stage = Stage.AwaitingFleet;
         ctx.Paused = true;
         return true;
+    }
+
+    // Player-facing explanation for the multi-fleet auto-skip (see callsite).
+    // Phrased neutrally so it reads correctly during any player's turn (the WPF
+    // alert handler shows it for every player, like battle summaries).
+    private static void EmitNoConvergentFleetAlert(GameState g, State st)
+    {
+        string? desc = st.ConvergenceSet is { Count: > 0 } cset
+            ? string.Join(" or ", cset.OrderBy(n => n.Value))
+            : null;
+        string msg = desc is not null
+            ? "Command: every fleet from this card must move onto the same sector " +
+              $"card. The first fleet committed to {desc}, and no other ship can reach " +
+              "there with the move(s) available — so the remaining fleet(s) stay put.\n\n" +
+              "Tip: whichever fleet you move first sets the card the others must share."
+            : "Command: no remaining ship has a legal move, so the rest of this Command ends.";
+        g.Log.EmitAlert(msg);
     }
 
     private bool TransitionToPath(GameState g, EffectContext ctx, ShipLocation origin, int effectiveMoves)
