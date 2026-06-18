@@ -129,11 +129,19 @@ public sealed class PolicyController : IPlayerController
                 CardActionType.Build => 2,    // was 3
                 _ => 1,
             },
+            // Refine baseline tuned against 92-game telemetry. Previous
+            // table massively over-picked Mine (+96 vs winning humans)
+            // and Build (+56) while under-picking Command (-143). Mine
+            // and Refine remain the policy's identity but at lower
+            // weight; Command added explicitly (was falling through to
+            // the default of 1) so the policy doesn't ignore the most
+            // common winning placement.
             AiPolicy.Refine => c.ActionType switch
             {
-                CardActionType.Mine => 7,
-                CardActionType.Refine => 7,
-                CardActionType.Trade => 4,
+                CardActionType.Refine => 6,   // was 7
+                CardActionType.Mine => 5,     // was 7
+                CardActionType.Command => 4,  // was implicit 1 (default)
+                CardActionType.Trade => 3,    // was 4
                 CardActionType.Build => 2,
                 _ => 1,
             },
