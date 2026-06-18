@@ -54,18 +54,25 @@ public sealed class ExecuteHandler : IEffectHandler
 
         if (st.Stage == Stage.Start)
         {
+            // Spell out the deck path: the player does NOT pick the card and
+            // does NOT discard from hand — the top deck card is drawn at random
+            // and its effect performed immediately. A report flagged this as
+            // surprising ("even though I don't have any cards to discard, it's
+            // allowing me to build a ship"): the drawn card was a Build.
             var options = new List<string>
             {
                 prms.Source == ExecuteSource.Hand
-                    ? $"Execute size up to {effectiveSize} from hand"
-                    : $"Execute size up to {effectiveSize} from deck",
+                    ? $"Execute a card from your hand (size ≤ {effectiveSize}), then discard it"
+                    : $"Execute the deck's top card (size ≤ {effectiveSize}) — drawn at random and performed now",
                 "Execute one of your techs",
             };
             ctx.PendingChoice = new SelectFromOptionsRequest
             {
                 Player = ctx.ActivatingPlayer,
                 Options = options,
-                Prompt = "Execute what?",
+                Prompt = prms.Source == ExecuteSource.Hand
+                    ? "Execute what?"
+                    : "Execute what? (the deck card is random — whatever it says happens immediately)",
             };
             st.Stage = Stage.AwaitingSourceChoice;
             ctx.Paused = true;

@@ -205,6 +205,47 @@ public class ExecuteTests
     }
 
     [Fact]
+    public void Execute_deck_build_card_builds_at_home_without_discarding_from_hand()
+    {
+        // Regression for a player report: a from-deck Execute (#86) drew a Build
+        // card and built a ship at home "even though I don't have any cards to
+        // discard." This is CORRECT — c86 reads "Execute one size [1] card from
+        // the deck", so it draws the top card at random and performs it; nothing
+        // leaves the player's hand. Lock that behavior in.
+        var g = NewGame();
+        var p1 = new PlayerId(1);
+        var registry = BuildRegistry();
+
+        // Stack deck so top is c22 (Build [1] Cruiser at home, size 1).
+        const int buildCard = 22;
+        Assert.Equal(CardActionType.Build, g.CardsById[buildCard].ActionType);
+        g.Deck.Remove(buildCard);
+        g.Deck.Insert(0, buildCard);
+
+        // Give the player a hand card; it must survive untouched.
+        var handCard = g.Deck.First(id => g.CardsById[id].ActionType != CardActionType.Build);
+        g.Deck.Remove(handCard);
+        g.Player(p1).Hand.Add(handCard);
+
+        var home = g.Map.HomeNodeIds[p1];
+        var handler = registry.Resolve("execute_size_n_from_deck_or_tech")!;
+        var ctx = Ctx(p1, sourceCardId: 86);
+        Resolve(g, handler, ctx, choice =>
+        {
+            switch (choice)
+            {
+                case SelectFromOptionsRequest opt: opt.Chosen = 0; break; // from deck
+                case SelectShipPlacementRequest sp: sp.Chosen = sp.LegalLocations[0]; break;
+            }
+        });
+
+        Assert.True(ctx.IsComplete);
+        Assert.Contains(buildCard, g.Discard);                  // executed card discarded
+        Assert.Contains(handCard, g.Player(p1).Hand);           // hand untouched
+        Assert.Contains(g.ShipPlacements, s => s.Owner == p1);  // a ship was built
+    }
+
+    [Fact]
     public void All_execute_cards_have_params()
     {
         var cards = CardDataLoader.LoadAll();

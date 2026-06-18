@@ -2605,7 +2605,8 @@ public partial class MainWindow : Window
     {
         var btn = new Button
         {
-            Content = text,
+            // Wrap so long, explanatory labels render fully instead of clipping.
+            Content = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap },
             Margin = new Thickness(0, 0, 0, 4),
             Padding = new Thickness(8, 4, 8, 4),
             Background = (Brush)FindResource("BgPanel2"),
