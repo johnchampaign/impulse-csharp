@@ -547,7 +547,7 @@ public partial class MainWindow : Window
                     "Flag bug", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            string content = StripLocalPathHeader(File.ReadAllText(path));
+            string content = StripLocalPathHeader(ReadLogShared(path));
             if (content.Length < 400)
             {
                 MessageBox.Show(this,
@@ -654,7 +654,14 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    string content = File.ReadAllText(path);
+                    // ReadLogShared (not File.ReadAllText) so we can read
+                    // impulse-last-game.log while the writer still has it
+                    // open with FileAccess.Write. Without this, submits
+                    // mid-game fail with "file is being used by another
+                    // process" (the writer used FileShare.ReadWrite, but
+                    // File.ReadAllText opens with FileShare.Read which
+                    // demands the writer release write access).
+                    string content = ReadLogShared(path);
                     // Strip the local-file-path header line (which would leak
                     // the user's Windows username) before submitting.
                     content = StripLocalPathHeader(content);
@@ -727,6 +734,20 @@ public partial class MainWindow : Window
 
     // Removes the "# log file: C:\Users\<username>\..." header line, which
     // is the only place the local Windows username appears in the log.
+    // Read a log file while the GameLog writer still has it open. The
+    // writer uses FileShare.ReadWrite, so we must too — File.ReadAllText
+    // opens with FileShare.Read and fails with IOException
+    // ("being used by another process") whenever the active game is
+    // still writing to its own log file. Used by SUBMIT LOGS and the
+    // auto-submit path that fires after FLAG BUG.
+    private static string ReadLogShared(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(fs);
+        return reader.ReadToEnd();
+    }
+
     private static string StripLocalPathHeader(string content)
     {
         var lines = content.Split('\n');
