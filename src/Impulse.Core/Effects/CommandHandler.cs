@@ -173,11 +173,26 @@ public sealed class CommandHandler : IEffectHandler
                 ctx.IsComplete = true;
                 return false;
             }
+            // Multi-fleet "same card" commands (rulebook p.30, cards #75/#98):
+            // every fleet must finish on the SAME sector card, and whichever
+            // fleet moves FIRST pins that card for the rest. A player who moved
+            // their transport fleet first then found they could no longer send a
+            // cruiser to a different destination (e.g. the core) didn't
+            // understand why (problem report, turn-6 Command #98). The
+            // convergence note was previously surfaced only when a later fleet
+            // auto-skipped for lack of a convergent origin — but that alert does
+            // not fire when every fleet does find a (constrained) legal move, so
+            // the player still gets no explanation. Spell out the rule up front
+            // so they can choose the ORDER deliberately.
+            string fleetPrompt = st.TotalFleets > 1
+                ? $"Select a {DescribeShipType(prms.ShipType)} fleet (1/{st.TotalFleets}) to Command. " +
+                  $"All {st.TotalFleets} fleets must finish on the SAME sector card — whichever fleet you move FIRST sets that card, so move the fleet you care about most (e.g. a cruiser heading for the core) first."
+                : $"Select a {DescribeShipType(prms.ShipType)} fleet to Command.";
             ctx.PendingChoice = new SelectFleetRequest
             {
                 Player = ctx.ActivatingPlayer,
                 LegalLocations = legal,
-                Prompt = $"Select a {DescribeShipType(prms.ShipType)} fleet (1/{st.TotalFleets}) to Command.",
+                Prompt = fleetPrompt,
             };
             st.Stage = Stage.AwaitingFleet;
             ctx.Paused = true;

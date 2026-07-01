@@ -235,6 +235,48 @@ public class CommandHandlerTests
     }
 
     [Fact]
+    public void Multi_fleet_first_prompt_explains_same_card_convergence()
+    {
+        // Problem report (turn-6 Command #98): the player moved a transport
+        // fleet first, then couldn't send a cruiser to the core, and never
+        // understood why. Root cause is the "each must move to the same card"
+        // rule (rulebook p.30): the first fleet moved pins the shared card.
+        // The auto-skip alert only fires when a later fleet has NO convergent
+        // origin — but if every fleet finds a constrained move (as in that
+        // game) the player still gets no explanation. So the fleet-1 prompt of
+        // a multi-fleet command must state the convergence rule up front.
+        var (g, _) = Bootstrap();
+        var p1 = new PlayerId(1);
+        var home = g.Map.HomeNodeIds[p1];
+        var gateA = g.Map.AdjacencyByNode[home].First();
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(gateA.Id)));
+
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 75); // FleetCount=2, "same card"
+        handler.Execute(g, ctx);
+        var fleet1 = (SelectFleetRequest)ctx.PendingChoice!;
+        Assert.Contains("same sector card", fleet1.Prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("first", fleet1.Prompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Single_fleet_prompt_omits_convergence_note()
+    {
+        // The convergence explanation must NOT clutter single-fleet commands,
+        // where there is no "same card" constraint to explain.
+        var (g, _) = Bootstrap();
+        var p1 = new PlayerId(1);
+        var home = g.Map.HomeNodeIds[p1];
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnNode(home)));
+
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 4); // single fleet, Either
+        handler.Execute(g, ctx);
+        var fleet1 = (SelectFleetRequest)ctx.PendingChoice!;
+        Assert.DoesNotContain("same sector card", fleet1.Prompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Multi_fleet_auto_skip_alerts_player_instead_of_silently_ending()
     {
         // Problem report (turn-6 Command #98): a multi-fleet "same card"
