@@ -63,6 +63,50 @@ public class CommandHandlerTests
     }
 
     [Fact]
+    public void Cruiser_command_never_offers_a_node_destination()
+    {
+        // Regression (problem report, turn-6 Command #98): a player tried to
+        // "move my cruiser to the core" and read the impossibility as the
+        // engine mis-resolving the move. Per rulebook p.26 cruisers move
+        // gate→gate and patrol the cards they cross — they can NEVER end on a
+        // card center, so the Sector Core node must never appear as a legal
+        // destination for a cruiser fleet. Lock that invariant here; the WPF
+        // destination prompt now spells it out.
+        var (g, _) = Bootstrap();
+        var p1 = new PlayerId(1);
+        var core = g.Map.SectorCoreNodeId;
+        // A gate touching the core: the cruiser sits on the core's doorstep.
+        var gateAtCore = g.Map.AdjacencyByNode[core].First().Id;
+        g.ShipPlacements.Add(new(p1, new ShipLocation.OnGate(gateAtCore)));
+
+        var handler = new CommandHandler(new EffectRegistry(), CommandRegistrations.ByCardId);
+        var ctx = Ctx(p1, sourceCardId: 31); // Cruiser, up to 1 move
+
+        DeclareMoveRequest? move = null;
+        while (!ctx.IsComplete)
+        {
+            ctx.Paused = false;
+            handler.Execute(g, ctx);
+            if (ctx.PendingChoice is DeclareMoveRequest m) { move = m; break; }
+            switch (ctx.PendingChoice)
+            {
+                case SelectFleetRequest f: f.Chosen = new ShipLocation.OnGate(gateAtCore); break;
+                case SelectFleetSizeRequest fs: fs.Chosen = fs.Min; break;
+                default: break;
+            }
+        }
+
+        Assert.NotNull(move);
+        // Every step of every legal path is a gate — cruisers never land on a
+        // node, so the core (a node) is offered nowhere.
+        foreach (var path in move!.LegalPaths)
+            foreach (var step in path)
+                Assert.IsType<ShipLocation.OnGate>(step);
+        Assert.DoesNotContain(move.LegalPaths,
+            path => path.Any(step => step is ShipLocation.OnNode n && n.Node == core));
+    }
+
+    [Fact]
     public void Either_card_offers_both_ship_types()
     {
         var (g, _) = Bootstrap();

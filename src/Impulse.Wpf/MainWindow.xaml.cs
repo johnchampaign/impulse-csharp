@@ -1595,9 +1595,21 @@ public partial class MainWindow : Window
             if (partial.Count == 0)
                 AddHighlight(m.Origin);
 
+            // Tailor wording to the fleet type. A cruiser fleet (origin on a
+            // gate) moves gate→gate and patrols the cards it crosses — it can
+            // NEVER end on a card center (the Sector Core included), so the
+            // core node is deliberately not offered as a destination. A player
+            // expecting to "move my cruiser to the core" reads that absence as
+            // the program mis-resolving the move (problem report, turn-6
+            // Command #98) — so spell out gate→gate movement instead of the
+            // generic "pick a gate/node".
+            bool originIsCruiser = m.Origin is ShipLocation.OnGate;
+            string nextKind = originIsCruiser ? "gate" : "card";
             string stepLabel = partial.Count == 0
-                ? $"Choose DESTINATION (up to {m.MaxMoves} move(s)). Origin is locked — click STAY to not move."
-                : $"DESTINATION step {partial.Count + 1}/{m.MaxMoves} — pick next gate/node, or accept current path.";
+                ? (originIsCruiser
+                    ? $"Choose DESTINATION gate (up to {m.MaxMoves} move(s)). Cruisers move gate→gate and patrol the cards they cross — they can't stop ON a card (the core included). Origin is locked — click STAY to not move."
+                    : $"Choose DESTINATION card (up to {m.MaxMoves} move(s)). Origin is locked — click STAY to not move.")
+                : $"DESTINATION step {partial.Count + 1}/{m.MaxMoves} — pick next {nextKind}, or accept current path.";
             PromptText.Text = stepLabel;
 
             ImpulseActionPanel.Children.Clear();
