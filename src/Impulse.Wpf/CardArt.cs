@@ -16,6 +16,10 @@ namespace Impulse.Wpf;
 /// race sheets.
 public static class CardArt
 {
+    /// Where players get the module. Shown in the file picker and in the
+    /// failure message so nobody has to go hunting for it.
+    public const string ModuleUrl = "https://vassalengine.org/library/projects/Impulse";
+
     // Raw bytes held in memory (108 cards ≈ 1.9 MB); decoded lazily and cached
     // frozen, because Render() re-runs every panel on every prompt transition
     // and RenderMap also re-runs on window resize.

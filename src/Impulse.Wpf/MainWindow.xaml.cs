@@ -507,7 +507,7 @@ public partial class MainWindow : Window
         {
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
-                Title = "Choose your Impulse VASSAL module (.vmod)",
+                Title = $"Choose your Impulse VASSAL module (.vmod) — download it from {CardArt.ModuleUrl}",
                 Filter = "VASSAL module (*.vmod)|*.vmod|Zip archive (*.zip)|*.zip|All files (*.*)|*.*",
                 CheckFileExists = true,
             };
@@ -515,7 +515,8 @@ public partial class MainWindow : Window
             if (!CardArt.TryLoad(dlg.FileName, out var error))
             {
                 MessageBox.Show(this,
-                    $"{error}\n\nThe game keeps using its built-in text cards.",
+                    $"{error}\n\nDownload the official module from:\n{CardArt.ModuleUrl}\n\n" +
+                    "The game keeps using its built-in text cards.",
                     "Card art", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
