@@ -43,11 +43,16 @@
                             BorderBrush="{StaticResource Accent}" BorderThickness="1"
                             Click="FlagBugButton_Click"
                             ToolTip="Mark a problem report in the log at the current turn/phase. The marker travels with the log when you click SUBMIT LOGS."/>
-                    <Button x:Name="SubmitLogsButton" Content="SUBMIT LOGS" Padding="8,2"
+                    <Button x:Name="SubmitLogsButton" Content="SUBMIT LOGS" Padding="8,2" Margin="0,0,6,0"
                             Background="{StaticResource BgPanel2}" Foreground="{StaticResource FgPrimary}"
                             BorderBrush="{StaticResource Accent}" BorderThickness="1"
                             Click="SubmitLogsButton_Click"
                             ToolTip="Submit your game logs to a public dataset for AI training."/>
+                    <Button x:Name="CardArtButton" Content="CARD ART: TEXT" Padding="8,2"
+                            Background="{StaticResource BgPanel2}" Foreground="{StaticResource FgPrimary}"
+                            BorderBrush="{StaticResource Accent}" BorderThickness="1"
+                            Click="CardArtButton_Click"
+                            ToolTip="Switch between the built-in text cards and the real card images from your own copy of the Impulse VASSAL module."/>
                 </StackPanel>
             </DockPanel>
         </Border>

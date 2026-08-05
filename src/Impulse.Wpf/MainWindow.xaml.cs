@@ -61,6 +61,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        RestoreCardArtPreference();
         Loaded += (_, _) => StartGame();
         SizeChanged += (_, _) => Dispatcher.InvokeAsync(RenderMap);
         PreviewMouseRightButtonDown += OnRightClick;
@@ -341,7 +342,9 @@ public partial class MainWindow : Window
             Text = label,
             FontSize = 10,
         });
-        border.Child = sp;
+        // A researched tech IS a card, so show its face in art mode. Basic techs
+        // have no card of their own and stay as labels.
+        if (tech is not Tech.Researched rt || !TrySetCardArt(border, rt.CardId, 104)) border.Child = sp;
         return border;
     }
 
@@ -373,6 +376,14 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Top,
         };
         var stack = new StackPanel();
+
+        // The detail pane is where you go to READ a card, so art goes above the
+        // text rather than replacing it — you get the picture and the rules.
+        if (CardArtImage(c.Id, 232) is { } detailArt)
+        {
+            detailArt.Margin = new Thickness(0, 0, 0, 10);
+            stack.Children.Add(detailArt);
+        }
 
         var headerRow = new StackPanel { Orientation = Orientation.Horizontal };
         headerRow.Children.Add(new Border
@@ -434,6 +445,93 @@ public partial class MainWindow : Window
         el.MouseEnter += (_, _) => ShowCardDetail(c);
         // Don't clear on leave — keep last-hovered card visible (lets you read it
         // without keeping the cursor on the small card).
+    }
+
+    // ---- optional VASSAL card art (see CardArt.cs) -------------------------
+    // Every card visual below asks for art and falls back to its text layout
+    // when art is off or the image is missing, so the two presentations are
+    // interchangeable and the text UI is never broken by a partial module.
+
+    /// An Image for a card face, or null when art isn't in play. Omit `width` to
+    /// let the parent's size constrain it (Uniform keeps the card's ratio).
+    private static Image? CardArtImage(int cardId, double? width = null)
+    {
+        if (!CardArt.Active) return null;
+        var bmp = CardArt.Card(cardId);
+        if (bmp is null) return null;
+        var img = new Image { Source = bmp, Stretch = Stretch.Uniform };
+        if (width is { } w) img.Width = w;
+        return img;
+    }
+
+    /// Swap a card border's content to art, dropping the padding so the image
+    /// meets the border. Returns false when art isn't available.
+    private static bool TrySetCardArt(Border border, int cardId, double? width = null)
+    {
+        var img = CardArtImage(cardId, width);
+        if (img is null) return false;
+        border.Padding = new Thickness(0);
+        border.Child = img;
+        return true;
+    }
+
+    /// Restore the saved art preference at startup: art stays off unless the
+    /// player enabled it AND their module still loads from the saved path.
+    private void RestoreCardArtPreference()
+    {
+        var prefs = LobbyPrefs.Load();
+        if (prefs.UseCardArt && !string.IsNullOrWhiteSpace(prefs.VmodPath) && File.Exists(prefs.VmodPath))
+        {
+            if (CardArt.TryLoad(prefs.VmodPath, out _)) CardArt.Enabled = true;
+        }
+        UpdateCardArtButton();
+    }
+
+    private void UpdateCardArtButton()
+    {
+        CardArtButton.Content = CardArt.Active ? "CARD ART: VASSAL" : "CARD ART: TEXT";
+    }
+
+    private void CardArtButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (CardArt.Active)
+        {
+            // Art → text. The module stays loaded so switching back is instant.
+            CardArt.Enabled = false;
+        }
+        else if (CardArt.Loaded)
+        {
+            CardArt.Enabled = true;
+        }
+        else
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Choose your Impulse VASSAL module (.vmod)",
+                Filter = "VASSAL module (*.vmod)|*.vmod|Zip archive (*.zip)|*.zip|All files (*.*)|*.*",
+                CheckFileExists = true,
+            };
+            if (dlg.ShowDialog(this) != true) return;
+            if (!CardArt.TryLoad(dlg.FileName, out var error))
+            {
+                MessageBox.Show(this,
+                    $"{error}\n\nThe game keeps using its built-in text cards.",
+                    "Card art", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            CardArt.Enabled = true;
+            // Fully qualified: `Path` alone is ambiguous here (System.Windows.Shapes.Path).
+            _g?.Log.Write($"card art loaded: {CardArt.CardCount} card images from {System.IO.Path.GetFileName(dlg.FileName)}");
+        }
+
+        LobbyPrefs.Update(p =>
+        {
+            p.UseCardArt = CardArt.Enabled;
+            if (CardArt.SourcePath is { } src) p.VmodPath = src;
+        });
+        UpdateCardArtButton();
+        Render();
+        RenderMap();
     }
 
     // When set before StartGame, the game starts from this snapshot file
@@ -1097,8 +1195,14 @@ public partial class MainWindow : Window
             else
                 policies[i] = (AiPolicy)(sel - 1);
         }
-        // Persist for next launch.
-        new LobbyPrefs { PlayerCount = playerCount, AiSelections = savedSelections }.Save();
+        // Persist for next launch. Merge rather than replace: Save() writes the
+        // whole object, so building a fresh LobbyPrefs here would reset every
+        // setting owned elsewhere (e.g. the card-art preference).
+        LobbyPrefs.Update(p =>
+        {
+            p.PlayerCount = playerCount;
+            p.AiSelections = savedSelections;
+        });
         return (playerCount, policies);
     }
 
@@ -2098,8 +2202,32 @@ public partial class MainWindow : Window
             Canvas.SetTop(label, p.Y - HexRadius * 0.92 + 4);
             MapCanvas.Children.Add(label);
 
+            // In art mode each sector shows its card image (face-down shows the
+            // module's card back), sized to sit inside the hex. The image is not
+            // hit-testable, so the hex underneath keeps handling clicks + hover,
+            // and its ZIndex stays below the ship tokens (10-12).
+            var sectorArt = CardArt.Active
+                ? (isFaceUp && cardState is NodeCardState.FaceUp fuArt ? CardArt.Card(fuArt.CardId)
+                    : isFaceDown ? CardArt.Back() : null)
+                : null;
+            if (sectorArt is not null)
+            {
+                double aw = HexRadius * 1.30;                  // fits the hex width
+                var img = new Image
+                {
+                    Source = sectorArt,
+                    Width = aw,
+                    Stretch = Stretch.Uniform,
+                    IsHitTestVisible = false,
+                };
+                double ah = aw * sectorArt.PixelHeight / Math.Max(1, sectorArt.PixelWidth);
+                Canvas.SetLeft(img, p.X - aw / 2);
+                Canvas.SetTop(img, p.Y - ah / 2);
+                Canvas.SetZIndex(img, 5);
+                MapCanvas.Children.Add(img);
+            }
             // Face-down indicator (large "?" centered on the hex).
-            if (isFaceDown)
+            else if (isFaceDown)
             {
                 var q = new TextBlock
                 {
@@ -2490,7 +2618,9 @@ public partial class MainWindow : Window
         header.Children.Add(new TextBlock { Style = (Style)FindResource("Label"), Text = $"  size {c.Size}   #{c.Id}", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) });
         stack.Children.Add(header);
         stack.Children.Add(new TextBlock { Style = (Style)FindResource("Body"), Text = c.EffectText, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0), FontSize = 11 });
-        border.Child = stack;
+        // Art fills the fixed 168x110 slot (card art is landscape ~1.59:1, so it
+        // lands at about 164x103 inside the border); text layout otherwise.
+        if (!TrySetCardArt(border, c.Id)) border.Child = stack;
         return border;
     }
 
@@ -2544,7 +2674,7 @@ public partial class MainWindow : Window
             FontSize = resolving ? 13 : 11,
             FontWeight = resolving ? FontWeights.SemiBold : FontWeights.Normal,
         });
-        border.Child = stack;
+        if (!TrySetCardArt(border, c.Id)) border.Child = stack;
         HookCardHover(border, c);
         // Plan cards are normally non-interactive, but research-from-Plan
         // prompts (c101) put plan card IDs in `_legalHandCardIds`. When
@@ -2608,7 +2738,9 @@ public partial class MainWindow : Window
             FontSize = isCursor ? 13 : 12,
         });
         stack.Children.Add(new TextBlock { Style = (Style)FindResource("Label"), Text = $"  #{c.Id}", VerticalAlignment = VerticalAlignment.Center });
-        border.Child = stack;
+        // The Impulse column is 180px wide; keep the thumbnail inside it. The
+        // cursor card is still marked by the accent border + glow.
+        if (!TrySetCardArt(border, c.Id, isCursor ? 150 : 130)) border.Child = stack;
         HookCardHover(border, c);
         return border;
     }
